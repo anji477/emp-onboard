@@ -1,0 +1,92 @@
+
+import React, { useState, useCallback, useEffect } from 'react';
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import Layout from './components/Layout';
+import Dashboard from './components/pages/Dashboard';
+import Tasks from './components/pages/Tasks';
+import Documents from './components/pages/Documents';
+import Training from './components/pages/Training';
+import Team from './components/pages/Team';
+import Assets from './components/pages/Assets';
+import Policies from './components/pages/Policies';
+import Feedback from './components/pages/Feedback';
+import Profile from './components/pages/Profile';
+import AdminDashboard from './components/pages/AdminDashboard';
+import UserManagement from './components/pages/UserManagement';
+import Login from './components/pages/Login';
+import SetupPassword from './components/pages/SetupPassword';
+import { User, UserRole } from './types';
+import { mockUser, mockAdmin } from './data/mockData';
+
+export const UserContext = React.createContext<{ user: User | null; login: (role: UserRole) => void; logout: () => void; updateUser: (userData: Partial<User>) => void; } | null>(null);
+
+const App: React.FC = () => {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const savedUser = localStorage.getItem('user');
+    if (savedUser) {
+      setUser(JSON.parse(savedUser));
+    }
+    setLoading(false);
+  }, []);
+
+  const login = useCallback((role: UserRole) => {
+    const userData = role === UserRole.Admin ? mockAdmin : mockUser;
+    setUser(userData);
+    localStorage.setItem('user', JSON.stringify(userData));
+  }, []);
+
+  const logout = useCallback(() => {
+    setUser(null);
+    localStorage.removeItem('user');
+  }, []);
+  
+  const updateUser = useCallback((userData: Partial<User>) => {
+    if (user) {
+      const updatedUser = { ...user, ...userData };
+      setUser(updatedUser);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+    }
+  }, [user]);
+
+  if (loading) {
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+  }
+
+  return (
+    <UserContext.Provider value={{ user, login, logout, updateUser }}>
+      <HashRouter>
+        <Routes>
+          {!user ? (
+            <>
+              <Route path="/login" element={<Login />} />
+              <Route path="/setup-password" element={<SetupPassword />} />
+              <Route path="*" element={<Navigate to="/login" replace />} />
+            </>
+          ) : (
+            <>
+              <Route path="/" element={<Layout />}>
+                <Route index element={<Dashboard />} />
+                <Route path="tasks" element={<Tasks />} />
+                <Route path="documents" element={<Documents />} />
+                <Route path="training" element={<Training />} />
+                <Route path="team" element={<Team />} />
+                <Route path="assets" element={<Assets />} />
+                <Route path="policies" element={<Policies />} />
+                <Route path="feedback" element={<Feedback />} />
+                <Route path="profile" element={<Profile />} />
+                {user.role === UserRole.Admin && <Route path="admin" element={<AdminDashboard />} />}
+                {user.role === UserRole.Admin && <Route path="users" element={<UserManagement />} />}
+              </Route>
+              <Route path="/login" element={<Navigate to="/" replace />} />
+            </>
+          )}
+        </Routes>
+      </HashRouter>
+    </UserContext.Provider>
+  );
+};
+
+export default App;
