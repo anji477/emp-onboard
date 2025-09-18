@@ -4,21 +4,32 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const connection = await mysql.createConnection({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_DATABASE
-});
+let pool;
+try {
+  pool = mysql.createPool({
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_DATABASE,
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
+  });
+  console.log('✅ MySQL pool created successfully');
+} catch (error) {
+  console.error('❌ MySQL connection failed:', error.message);
+  console.log('📝 Please start MySQL server and create the database');
+  process.exit(1);
+}
 
 // Create tables if they don't exist
-await connection.execute(`
+await pool.execute(`
   CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255),
-    role VARCHAR(50) DEFAULT 'Employee',
+    role ENUM('Employee', 'Admin', 'HR') DEFAULT 'Employee',
     avatar_url TEXT,
     team VARCHAR(255),
     job_title VARCHAR(255),
@@ -29,7 +40,7 @@ await connection.execute(`
   )
 `);
 
-await connection.execute(`
+await pool.execute(`
   CREATE TABLE IF NOT EXISTS tasks (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT,
@@ -39,7 +50,7 @@ await connection.execute(`
   )
 `);
 
-await connection.execute(`
+await pool.execute(`
   CREATE TABLE IF NOT EXISTS it_assets (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
@@ -56,7 +67,7 @@ await connection.execute(`
   )
 `);
 
-await connection.execute(`
+await pool.execute(`
   CREATE TABLE IF NOT EXISTS notifications (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
@@ -69,4 +80,4 @@ await connection.execute(`
 
 // Tables created successfully - no sample data inserted
 
-export default connection;
+export default pool;

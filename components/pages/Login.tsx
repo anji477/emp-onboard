@@ -7,8 +7,8 @@ import Icon from '../common/Icon';
 
 const Login: React.FC = () => {
     const auth = useContext(UserContext);
-    const [email, setEmail] = useState('john@example.com');
-    const [password, setPassword] = useState('password123');
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
@@ -21,6 +21,7 @@ const Login: React.FC = () => {
             const response = await fetch('/api/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify({ email, password })
             });
             
@@ -29,8 +30,7 @@ const Login: React.FC = () => {
             
             if (response.ok) {
                 console.log('Login successful, user data:', data.user);
-                // Store user data and update context
-                localStorage.setItem('user', JSON.stringify(data.user));
+                // Update context (cookie is set automatically)
                 if (auth?.updateUser) {
                     auth.updateUser(data.user);
                 }
@@ -48,15 +48,7 @@ const Login: React.FC = () => {
         }
     };
     
-    const handleDemoLogin = (role: UserRole) => {
-        if (role === UserRole.Admin) {
-            setEmail('admin@example.com');
-            setPassword('password123');
-        } else {
-            setEmail('john@example.com');
-            setPassword('password123');
-        }
-    };
+
 
     return (
         <div className="flex items-center justify-center min-h-screen bg-gray-100">
@@ -121,20 +113,6 @@ const Login: React.FC = () => {
                         <Button type="submit" fullWidth disabled={loading}>
                             {loading ? 'Signing in...' : 'Sign in'}
                         </Button>
-                        
-                        <div className="mt-4">
-                            <p className="text-sm text-center text-gray-600 mb-2">Demo accounts:</p>
-                            <div className="flex flex-col space-y-2">
-                                <Button onClick={() => handleDemoLogin(UserRole.Employee)} fullWidth variant="secondary" size="sm">
-                                    <Icon name="user" className="w-4 h-4 mr-2" />
-                                    Employee (john@example.com)
-                                </Button>
-                                <Button onClick={() => handleDemoLogin(UserRole.Admin)} fullWidth variant="secondary" size="sm">
-                                    <Icon name="cog-6-tooth" className="w-4 h-4 mr-2" />
-                                    Admin (admin@example.com)
-                                </Button>
-                            </div>
-                        </div>
                     </div>
                 </form>
                  <div className="mt-6">

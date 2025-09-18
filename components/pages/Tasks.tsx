@@ -48,7 +48,9 @@ const Tasks: React.FC = () => {
 
     const fetchTasks = async () => {
         try {
-            const response = await fetch('http://localhost:3001/api/tasks');
+            const response = await fetch('/api/tasks', {
+                credentials: 'include'
+            });
             const tasksData = await response.json();
             // Convert database format to frontend format
             const formattedTasks = tasksData.map((task: any) => ({
@@ -65,13 +67,27 @@ const Tasks: React.FC = () => {
     };
 
     const handleStatusChange = async (id: string, newStatus: TaskStatus) => {
+        console.log('Attempting to update task:', id, 'to status:', newStatus);
         try {
-            await fetch(`http://localhost:3001/api/tasks/${id}`, {
+            const response = await fetch(`/api/tasks/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify({ status: newStatus })
             });
-            setTasks(tasks.map(task => task.id === id ? { ...task, status: newStatus } : task));
+            
+            console.log('Response status:', response.status);
+            const responseData = await response.json();
+            console.log('Response data:', responseData);
+            
+            if (response.ok) {
+                setTasks(tasks.map(task => task.id === id ? { ...task, status: newStatus } : task));
+                // Trigger progress update on dashboard by dispatching custom event
+                window.dispatchEvent(new CustomEvent('taskUpdated'));
+                console.log('Task updated successfully in UI');
+            } else {
+                console.error('Failed to update task status:', responseData);
+            }
         } catch (error) {
             console.error('Error updating task:', error);
         }

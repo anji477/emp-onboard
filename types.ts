@@ -76,7 +76,7 @@ export interface TeamMember {
 }
 
 export interface Policy {
-  id: string;
+  id: number;
   title: string;
   category: string;
   summary: string;
@@ -108,7 +108,7 @@ export enum AssetStatus {
 }
 
 export interface ITAsset {
-  id: string;
+  id: number;
   name: string;
   type: 'Hardware' | 'Software';
   serialNumber: string;

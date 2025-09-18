@@ -190,10 +190,10 @@ const AdminAssetView: React.FC<{ allAssets: ITAsset[]; onAssetClick: (asset: ITA
                                                 <Icon name="arrow-uturn-left" className="w-5 h-5"/>
                                             </button>
                                         )}
-                                        <button className="text-indigo-600 hover:text-indigo-900" title="Edit Asset" onClick={(e) => e.stopPropagation()}>
+                                        <button className="text-indigo-600 hover:text-indigo-900" title="Edit Asset" onClick={(e) => { e.stopPropagation(); setEditingAsset(asset); }}>
                                             <Icon name="pencil" className="w-5 h-5"/>
                                         </button>
-                                         <button className="text-red-600 hover:text-red-900" title="Delete Asset" onClick={(e) => e.stopPropagation()}>
+                                         <button className="text-red-600 hover:text-red-900" title="Delete Asset" onClick={(e) => { e.stopPropagation(); handleDeleteAsset(asset.id); }}>
                                             <Icon name="trash" className="w-5 h-5"/>
                                         </button>
                                     </div>
@@ -214,6 +214,7 @@ const Assets: React.FC = () => {
     const [selectedAsset, setSelectedAsset] = useState<ITAsset | null>(null);
     const [assetToReturn, setAssetToReturn] = useState<ITAsset | null>(null);
     const [showAddAssetModal, setShowAddAssetModal] = useState(false);
+    const [editingAsset, setEditingAsset] = useState<ITAsset | null>(null);
     const [notification, setNotification] = useState('');
     const auth = useContext(UserContext);
     const isAdmin = auth?.user?.role === UserRole.Admin;
@@ -225,7 +226,9 @@ const Assets: React.FC = () => {
     
     const fetchAssets = async () => {
         try {
-            const response = await fetch('http://localhost:3001/api/assets');
+            const response = await fetch('/api/assets', {
+                credentials: 'include'
+            });
             const assets = await response.json();
             setAllAssets(assets);
             setUserAssets(assets);
@@ -272,13 +275,71 @@ const Assets: React.FC = () => {
         setTimeout(() => setNotification(''), 5000);
     };
     
+    const handleUpdateAsset = async () => {
+        if (!editingAsset) return;
+        
+        try {
+            const response = await fetch(`/api/assets/${editingAsset.id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include',
+                body: JSON.stringify({
+                    name: editingAsset.name,
+                    serialNumber: editingAsset.serialNumber,
+                    status: editingAsset.status
+                })
+            });
+            
+            if (response.ok) {
+                const updatedAsset = await response.json();
+                setAllAssets(prev => prev.map(asset => asset.id === editingAsset.id ? updatedAsset : asset));
+                setUserAssets(prev => prev.map(asset => asset.id === editingAsset.id ? updatedAsset : asset));
+                setNotification('Asset updated successfully.');
+                setEditingAsset(null);
+                setTimeout(() => setNotification(''), 3000);
+            } else {
+                setNotification('Error updating asset. Please try again.');
+            }
+        } catch (error) {
+            console.error('Error updating asset:', error);
+            setNotification('Error updating asset. Please try again.');
+        }
+    };
+    
+    const handleDeleteAsset = async (assetId: number) => {
+        console.log('handleDeleteAsset called with ID:', assetId);
+        if (!confirm('Are you sure you want to delete this asset?')) return;
+        
+        try {
+            const response = await fetch(`/api/assets/${assetId}`, {
+                method: 'DELETE',
+                credentials: 'include'
+            });
+            
+            if (response.ok) {
+                setAllAssets(prev => prev.filter(asset => asset.id !== assetId));
+                setUserAssets(prev => prev.filter(asset => asset.id !== assetId));
+                setNotification('Asset deleted successfully.');
+                setTimeout(() => setNotification(''), 3000);
+            } else {
+                setNotification('Error deleting asset. Please try again.');
+            }
+        } catch (error) {
+            console.error('Error deleting asset:', error);
+            setNotification('Error deleting asset. Please try again.');
+        }
+    };
+    
     const handleAddAsset = async () => {
         try {
-            const response = await fetch('http://localhost:3001/api/assets', {
+            const response = await fetch('/api/assets', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
+                credentials: 'include',
                 body: JSON.stringify({
                     name: newAsset.name,
                     type: newAsset.type,
@@ -473,6 +534,52 @@ const Assets: React.FC = () => {
                         <div className="flex justify-end gap-2 pt-4 border-t">
                             <Button variant="secondary" onClick={() => setShowAddAssetModal(false)}>Cancel</Button>
                             <Button onClick={handleAddAsset} disabled={!newAsset.name || !newAsset.serialNumber}>Add Asset</Button>
+                        </div>
+                    </div>
+                </Modal>
+            )}
+            
+            {/* Edit Asset Modal */}
+            {editingAsset && (
+                <Modal isOpen={!!editingAsset} onClose={() => setEditingAsset(null)} title="Edit Asset">
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Asset Name</label>
+                            <input
+                                type="text"
+                                value={editingAsset.name}
+                                onChange={(e) => setEditingAsset(prev => prev ? { ...prev, name: e.target.value } : null)}
+                                className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                            />
+                        </div>
+                        
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Serial Number</label>
+                            <input
+                                type="text"
+                                value={editingAsset.serialNumber}
+                                onChange={(e) => setEditingAsset(prev => prev ? { ...prev, serialNumber: e.target.value } : null)}
+                                className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                            />
+                        </div>
+                        
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                            <select
+                                value={editingAsset.status}
+                                onChange={(e) => setEditingAsset(prev => prev ? { ...prev, status: e.target.value as AssetStatus } : null)}
+                                className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                            >
+                                <option value="Unassigned">Unassigned</option>
+                                <option value="Assigned">Assigned</option>
+                                <option value="PendingReturn">Pending Return</option>
+                                <option value="Returned">Returned</option>
+                            </select>
+                        </div>
+                        
+                        <div className="flex justify-end gap-2 pt-4 border-t">
+                            <Button variant="secondary" onClick={() => setEditingAsset(null)}>Cancel</Button>
+                            <Button onClick={() => handleUpdateAsset()}>Update Asset</Button>
                         </div>
                     </div>
                 </Modal>

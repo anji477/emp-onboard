@@ -9,7 +9,7 @@ interface User {
   id: number;
   name: string;
   email: string;
-  role: 'Employee' | 'Admin';
+  role: 'Employee' | 'Admin' | 'HR';
   team?: string;
   job_title?: string;
   start_date?: string;
@@ -27,7 +27,8 @@ const UserManagement: React.FC = () => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    role: 'Employee' as 'Employee' | 'Admin',
+    password: '',
+    role: 'Employee' as 'Employee' | 'Admin' | 'HR',
     team: '',
     job_title: '',
     start_date: ''
@@ -39,7 +40,7 @@ const UserManagement: React.FC = () => {
 
   const fetchUsers = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/users');
+      const response = await fetch('/api/users');
       const usersData = await response.json();
       setUsers(usersData);
     } catch (error) {
@@ -50,7 +51,7 @@ const UserManagement: React.FC = () => {
   const handleAddUser = async () => {
     console.log('handleAddUser called with:', formData);
     try {
-      const response = await fetch('http://localhost:3001/api/users', {
+      const response = await fetch('/api/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
@@ -79,7 +80,7 @@ const UserManagement: React.FC = () => {
   
   const handleInviteUser = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/users/invite', {
+      const response = await fetch('/api/users/invite', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
@@ -106,7 +107,7 @@ const UserManagement: React.FC = () => {
     if (!editingUser) return;
     
     try {
-      const response = await fetch(`http://localhost:3001/api/users/${editingUser.id}`, {
+      const response = await fetch(`/api/users/${editingUser.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
@@ -129,7 +130,7 @@ const UserManagement: React.FC = () => {
     if (!confirm('Are you sure you want to delete this user?')) return;
     
     try {
-      const response = await fetch(`http://localhost:3001/api/users/${userId}`, {
+      const response = await fetch(`/api/users/${userId}`, {
         method: 'DELETE'
       });
       
@@ -147,6 +148,7 @@ const UserManagement: React.FC = () => {
     setFormData({
       name: '',
       email: '',
+      password: '',
       role: 'Employee',
       team: '',
       job_title: '',
@@ -159,6 +161,7 @@ const UserManagement: React.FC = () => {
     setFormData({
       name: user.name,
       email: user.email,
+      password: '',
       role: user.role,
       team: user.team || '',
       job_title: user.job_title || '',
@@ -166,8 +169,8 @@ const UserManagement: React.FC = () => {
     });
   };
 
-  if (!auth?.user || auth.user.role !== 'Admin') {
-    return <div>Access denied. Admin privileges required.</div>;
+  if (!auth?.user || (auth.user.role !== 'Admin' && auth.user.role !== 'HR')) {
+    return <div>Access denied. Admin or HR privileges required.</div>;
   }
 
   return (
@@ -227,7 +230,8 @@ const UserManagement: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                      user.role === 'Admin' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
+                      user.role === 'Admin' ? 'bg-purple-100 text-purple-800' : 
+                      user.role === 'HR' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
                     }`}>
                       {user.role}
                     </span>
@@ -301,11 +305,12 @@ const UserManagement: React.FC = () => {
               <label className="block text-sm font-medium text-gray-700">Role</label>
               <select
                 value={formData.role}
-                onChange={(e) => setFormData({...formData, role: e.target.value as 'Employee' | 'Admin'})}
+                onChange={(e) => setFormData({...formData, role: e.target.value as 'Employee' | 'Admin' | 'HR'})}
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200"
               >
                 <option value="Employee">Employee</option>
                 <option value="Admin">Admin</option>
+                <option value="HR">HR</option>
               </select>
             </div>
             
@@ -393,15 +398,29 @@ const UserManagement: React.FC = () => {
               />
             </div>
             
+            {!editingUser && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Password</label>
+                <input
+                  type="password"
+                  value={formData.password}
+                  onChange={(e) => setFormData({...formData, password: e.target.value})}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200"
+                  placeholder="Enter password for new user"
+                />
+              </div>
+            )}
+            
             <div>
               <label className="block text-sm font-medium text-gray-700">Role</label>
               <select
                 value={formData.role}
-                onChange={(e) => setFormData({...formData, role: e.target.value as 'Employee' | 'Admin'})}
+                onChange={(e) => setFormData({...formData, role: e.target.value as 'Employee' | 'Admin' | 'HR'})}
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200"
               >
                 <option value="Employee">Employee</option>
                 <option value="Admin">Admin</option>
+                <option value="HR">HR</option>
               </select>
             </div>
             
@@ -455,7 +474,7 @@ const UserManagement: React.FC = () => {
                     handleAddUser();
                   }
                 }}
-                disabled={!formData.name || !formData.email}
+                disabled={!formData.name || !formData.email || (!editingUser && !formData.password)}
                 className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {editingUser ? 'Update' : 'Add'} User

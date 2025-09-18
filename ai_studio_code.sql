@@ -18,7 +18,7 @@ CREATE TABLE `users` (
   `name` VARCHAR(255) NOT NULL,
   `email` VARCHAR(255) NOT NULL UNIQUE,
   `password_hash` VARCHAR(255) NOT NULL,
-  `role` ENUM('Employee', 'Admin') NOT NULL DEFAULT 'Employee',
+  `role` ENUM('Employee', 'Admin', 'HR') NOT NULL DEFAULT 'Employee',
   `avatar_url` VARCHAR(255),
   `team` VARCHAR(100),
   `job_title` VARCHAR(100),
@@ -120,7 +120,8 @@ CREATE TABLE `notifications` (
 INSERT INTO `users` (`id`, `name`, `email`, `password_hash`, `role`, `avatar_url`, `team`, `job_title`, `start_date`, `onboarding_progress`) VALUES
 (1, 'Admin User', 'admin@example.com', 'password123', 'Admin', 'https://ui-avatars.com/api/?name=Admin+User&background=6366f1&color=fff', 'Management', 'Administrator', '2022-01-01', 100),
 (6, 'Alex Doe', 'alex.doe@example.com', 'password123', 'Employee', 'https://ui-avatars.com/api/?name=Alex+Doe&background=6366f1&color=fff', 'Engineering', 'Developer', '2024-01-01', 25),
-(7, 'Jane Smith', 'jane.smith@example.com', 'password123', 'Employee', 'https://ui-avatars.com/api/?name=Jane+Smith&background=6366f1&color=fff', 'Engineering', 'Senior Developer', '2023-01-01', 100);
+(7, 'Jane Smith', 'jane.smith@example.com', 'password123', 'Employee', 'https://ui-avatars.com/api/?name=Jane+Smith&background=6366f1&color=fff', 'Engineering', 'Senior Developer', '2023-01-01', 100),
+(8, 'HR Manager', 'hr@example.com', 'password123', 'HR', 'https://ui-avatars.com/api/?name=HR+Manager&background=6366f1&color=fff', 'Human Resources', 'HR Manager', '2022-01-01', 100);
 
 -- Insert Policies
 INSERT INTO `policies` (`title`, `category`, `summary`, `content`) VALUES

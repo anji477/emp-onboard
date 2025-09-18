@@ -1,61 +1,159 @@
-
-import React, { useState, useRef, useEffect } from 'react';
-import { mockPolicies } from '../../data/mockData';
+import React, { useState, useRef, useEffect, useContext } from 'react';
 import { Policy } from '../../types';
 import Card from '../common/Card';
 import Icon from '../common/Icon';
 import Button from '../common/Button';
-import { createChat } from '../../services/geminiService';
-
-const chatService = createChat();
+import Modal from '../common/Modal';
+import { UserContext } from '../../App';
 
 const Policies: React.FC = () => {
-    const [selectedPolicy, setSelectedPolicy] = useState<Policy | null>(mockPolicies[0]);
+    const auth = useContext(UserContext);
+    const [policies, setPolicies] = useState<Policy[]>([]);
+    const [selectedPolicy, setSelectedPolicy] = useState<Policy | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [showAddModal, setShowAddModal] = useState(false);
+    const [editingPolicy, setEditingPolicy] = useState<Policy | null>(null);
+    const [notification, setNotification] = useState('');
+    
+    const [formData, setFormData] = useState({
+        title: '',
+        category: '',
+        summary: '',
+        content: ''
+    });
 
-    // AI Assistant State
-    const [aiQuery, setAiQuery] = useState('');
-    const [isAiLoading, setIsAiLoading] = useState(false);
-    const [chatHistory, setChatHistory] = useState<{ author: 'user' | 'ai'; text: string }[]>([]);
-    const chatEndRef = useRef<HTMLDivElement>(null);
+    const isAdminOrHR = auth?.user?.role === 'Admin' || auth?.user?.role === 'HR';
 
-    const filteredPolicies = mockPolicies.filter(p => 
+    useEffect(() => {
+        fetchPolicies();
+    }, []);
+
+    const fetchPolicies = async () => {
+        try {
+            const response = await fetch('/api/policies', {
+                credentials: 'include'
+            });
+            const policiesData = await response.json();
+            setPolicies(policiesData);
+            if (policiesData.length > 0 && !selectedPolicy) {
+                setSelectedPolicy(policiesData[0]);
+            }
+        } catch (error) {
+            console.error('Error fetching policies:', error);
+        }
+    };
+
+    const handleAddPolicy = async () => {
+        try {
+            const response = await fetch('/api/policies', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify(formData)
+            });
+            
+            if (response.ok) {
+                const newPolicy = await response.json();
+                setPolicies([...policies, newPolicy]);
+                setNotification('Policy added successfully!');
+                setShowAddModal(false);
+                resetForm();
+                setTimeout(() => setNotification(''), 3000);
+            }
+        } catch (error) {
+            console.error('Error adding policy:', error);
+        }
+    };
+
+    const handleUpdatePolicy = async () => {
+        if (!editingPolicy) return;
+        
+        try {
+            const response = await fetch(`/api/policies/${editingPolicy.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify(formData)
+            });
+            
+            if (response.ok) {
+                const updatedPolicy = await response.json();
+                setPolicies(policies.map(p => p.id === editingPolicy.id ? updatedPolicy : p));
+                if (selectedPolicy?.id === editingPolicy.id) {
+                    setSelectedPolicy(updatedPolicy);
+                }
+                setNotification('Policy updated successfully!');
+                setEditingPolicy(null);
+                resetForm();
+                setTimeout(() => setNotification(''), 3000);
+            }
+        } catch (error) {
+            console.error('Error updating policy:', error);
+        }
+    };
+
+    const handleDeletePolicy = async (policyId: number) => {
+        if (!confirm('Are you sure you want to delete this policy?')) return;
+        
+        try {
+            const response = await fetch(`/api/policies/${policyId}`, {
+                method: 'DELETE',
+                credentials: 'include'
+            });
+            
+            if (response.ok) {
+                setPolicies(policies.filter(p => p.id !== policyId));
+                if (selectedPolicy?.id === policyId) {
+                    setSelectedPolicy(policies.length > 1 ? policies[0] : null);
+                }
+                setNotification('Policy deleted successfully!');
+                setTimeout(() => setNotification(''), 3000);
+            }
+        } catch (error) {
+            console.error('Error deleting policy:', error);
+        }
+    };
+
+    const resetForm = () => {
+        setFormData({ title: '', category: '', summary: '', content: '' });
+    };
+
+    const openEditModal = (policy: Policy) => {
+        setEditingPolicy(policy);
+        setFormData({
+            title: policy.title,
+            category: policy.category,
+            summary: policy.summary,
+            content: policy.content
+        });
+    };
+
+    const filteredPolicies = policies.filter(p => 
         p.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
         p.category.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    const handleAiSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!aiQuery.trim() || isAiLoading) return;
-        
-        const userMessage = { author: 'user' as const, text: aiQuery };
-        setChatHistory(prev => [...prev, userMessage]);
-        setAiQuery('');
-        setIsAiLoading(true);
-
-        try {
-            const response = await chatService.sendMessage({ message: aiQuery });
-            const aiMessage = { author: 'ai' as const, text: response.text };
-            setChatHistory(prev => [...prev, aiMessage]);
-        } catch (error) {
-            console.error("AI chat error:", error);
-            const errorMessage = { author: 'ai' as const, text: "Sorry, I'm having trouble connecting right now." };
-            setChatHistory(prev => [...prev, errorMessage]);
-        } finally {
-            setIsAiLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [chatHistory]);
-
     return (
         <div className="space-y-8">
-            <div>
-                <h1 className="text-3xl font-bold text-gray-800">Policies & Knowledge Base</h1>
-                <p className="text-gray-600 mt-1">Access company policies and get quick answers from our AI assistant.</p>
+            <div className="flex justify-between items-center">
+                <div>
+                    <h1 className="text-3xl font-bold text-gray-800">Policies & Knowledge Base</h1>
+                    <p className="text-gray-600 mt-1">Access company policies and procedures.</p>
+                </div>
+                {isAdminOrHR && (
+                    <Button onClick={() => { console.log('Add Policy clicked'); alert('Add Policy clicked'); setShowAddModal(true); }}>
+                        <Icon name="plus" className="w-5 h-5 mr-2" />
+                        Add Policy
+                    </Button>
+                )}
+                <div className="text-sm text-gray-500">User role: {auth?.user?.role} | isAdminOrHR: {isAdminOrHR.toString()}</div>
             </div>
+
+            {notification && (
+                <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded-md">
+                    {notification}
+                </div>
+            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-1">
@@ -71,13 +169,33 @@ const Policies: React.FC = () => {
                         <ul className="space-y-2 h-96 overflow-y-auto">
                             {filteredPolicies.map(policy => (
                                 <li key={policy.id}>
-                                    <button
-                                        onClick={() => setSelectedPolicy(policy)}
-                                        className={`w-full text-left p-3 rounded-md transition-colors ${selectedPolicy?.id === policy.id ? 'bg-indigo-100 text-indigo-800' : 'hover:bg-gray-100'}`}
-                                    >
-                                        <p className="font-medium">{policy.title}</p>
-                                        <p className="text-sm text-gray-500">{policy.category}</p>
-                                    </button>
+                                    <div className={`p-3 rounded-md transition-colors ${selectedPolicy?.id === policy.id ? 'bg-indigo-100 text-indigo-800' : 'hover:bg-gray-100'}`}>
+                                        <button
+                                            onClick={() => setSelectedPolicy(policy)}
+                                            className="w-full text-left"
+                                        >
+                                            <p className="font-medium">{policy.title}</p>
+                                            <p className="text-sm text-gray-500">{policy.category}</p>
+                                        </button>
+                                        {isAdminOrHR && (
+                                            <div className="flex gap-2 mt-2">
+                                                <button
+                                                    onClick={() => openEditModal(policy)}
+                                                    className="text-indigo-600 hover:text-indigo-900"
+                                                    title="Edit Policy"
+                                                >
+                                                    <Icon name="pencil" className="w-4 h-4" />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeletePolicy(policy.id)}
+                                                    className="text-red-600 hover:text-red-900"
+                                                    title="Delete Policy"
+                                                >
+                                                    <Icon name="trash" className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
                                 </li>
                             ))}
                         </ul>
@@ -90,10 +208,9 @@ const Policies: React.FC = () => {
                             <div>
                                 <h2 className="text-2xl font-bold text-gray-800">{selectedPolicy.title}</h2>
                                 <p className="text-sm text-gray-500 mt-1 mb-4">{selectedPolicy.category}</p>
-                                <p className="text-gray-700 font-medium mb-2">{selectedPolicy.summary}</p>
+                                <p className="text-gray-700 font-medium mb-4">{selectedPolicy.summary}</p>
                                 <div className="prose max-w-none text-gray-600">
                                     <p>{selectedPolicy.content}</p>
-                                    <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed non risus. Suspendisse lectus tortor, dignissim sit amet, adipiscing nec, ultricies sed, dolor. Cras elementum ultrices diam. Maecenas ligula massa, varius a, semper congue, euismod non, mi. Proin porttitor, orci nec nonummy molestie, enim est eleifend mi, non fermentum diam nisl sit amet erat.</p>
                                 </div>
                             </div>
                         ) : (
@@ -106,41 +223,128 @@ const Policies: React.FC = () => {
                 </div>
             </div>
 
-            <Card>
-                <h2 className="text-xl font-semibold text-gray-700 mb-4">Ask AI about Company Policies</h2>
-                <div className="h-80 bg-gray-50 rounded-lg p-4 overflow-y-auto flex flex-col space-y-4">
-                    {chatHistory.map((msg, index) => (
-                        <div key={index} className={`flex items-start gap-3 ${msg.author === 'user' ? 'justify-end' : ''}`}>
-                             {msg.author === 'ai' && <div className="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center text-white flex-shrink-0"><Icon name="sparkles" className="w-5 h-5"/></div>}
-                            <div className={`max-w-md p-3 rounded-lg ${msg.author === 'user' ? 'bg-indigo-500 text-white' : 'bg-white text-gray-800'}`}>
-                                {msg.text}
-                            </div>
+            {/* Add Policy Modal */}
+            {showAddModal && (
+                <Modal isOpen={true} onClose={() => { setShowAddModal(false); resetForm(); }} title="Add New Policy">
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Title</label>
+                            <input
+                                type="text"
+                                value={formData.title}
+                                onChange={(e) => setFormData({...formData, title: e.target.value})}
+                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200"
+                            />
                         </div>
-                    ))}
-                     {isAiLoading && (
-                        <div className="flex items-start gap-3">
-                            <div className="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center text-white flex-shrink-0"><Icon name="sparkles" className="w-5 h-5"/></div>
-                            <div className="p-3 rounded-lg bg-white text-gray-800">
-                                <span className="animate-pulse">...</span>
-                            </div>
+                        
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Category</label>
+                            <select
+                                value={formData.category}
+                                onChange={(e) => setFormData({...formData, category: e.target.value})}
+                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200"
+                            >
+                                <option value="">Select Category</option>
+                                <option value="HR">HR</option>
+                                <option value="IT">IT</option>
+                                <option value="Operations">Operations</option>
+                                <option value="Finance">Finance</option>
+                                <option value="Legal">Legal</option>
+                            </select>
                         </div>
-                    )}
-                    <div ref={chatEndRef} />
-                </div>
-                <form onSubmit={handleAiSubmit} className="mt-4 flex gap-2">
-                    <input
-                        type="text"
-                        value={aiQuery}
-                        onChange={(e) => setAiQuery(e.target.value)}
-                        placeholder="e.g., 'What is the work from home policy?'"
-                        className="flex-grow px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
-                        disabled={isAiLoading}
-                    />
-                    <Button type="submit" disabled={isAiLoading || !aiQuery.trim()}>
-                        {isAiLoading ? 'Thinking...' : 'Ask'}
-                    </Button>
-                </form>
-            </Card>
+                        
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Summary</label>
+                            <input
+                                type="text"
+                                value={formData.summary}
+                                onChange={(e) => setFormData({...formData, summary: e.target.value})}
+                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200"
+                            />
+                        </div>
+                        
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Content</label>
+                            <textarea
+                                rows={6}
+                                value={formData.content}
+                                onChange={(e) => setFormData({...formData, content: e.target.value})}
+                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200"
+                            />
+                        </div>
+                        
+                        <div className="flex justify-end gap-2 pt-4 border-t">
+                            <Button variant="secondary" onClick={() => { setShowAddModal(false); resetForm(); }}>
+                                Cancel
+                            </Button>
+                            <Button onClick={handleAddPolicy} disabled={!formData.title || !formData.category}>
+                                Add Policy
+                            </Button>
+                        </div>
+                    </div>
+                </Modal>
+            )}
+
+            {/* Edit Policy Modal */}
+            {editingPolicy && (
+                <Modal isOpen={true} onClose={() => { setEditingPolicy(null); resetForm(); }} title="Edit Policy">
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Title</label>
+                            <input
+                                type="text"
+                                value={formData.title}
+                                onChange={(e) => setFormData({...formData, title: e.target.value})}
+                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200"
+                            />
+                        </div>
+                        
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Category</label>
+                            <select
+                                value={formData.category}
+                                onChange={(e) => setFormData({...formData, category: e.target.value})}
+                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200"
+                            >
+                                <option value="HR">HR</option>
+                                <option value="IT">IT</option>
+                                <option value="Operations">Operations</option>
+                                <option value="Finance">Finance</option>
+                                <option value="Legal">Legal</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Summary</label>
+                            <input
+                                type="text"
+                                value={formData.summary}
+                                onChange={(e) => setFormData({...formData, summary: e.target.value})}
+                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200"
+                            />
+                        </div>
+                        
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Content</label>
+                            <textarea
+                                rows={6}
+                                value={formData.content}
+                                onChange={(e) => setFormData({...formData, content: e.target.value})}
+                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200"
+                            />
+                        </div>
+                        
+                        <div className="flex justify-end gap-2 pt-4 border-t">
+                            <Button variant="secondary" onClick={() => { setEditingPolicy(null); resetForm(); }}>
+                                Cancel
+                            </Button>
+                            <Button onClick={handleUpdatePolicy}>
+                                Update Policy
+                            </Button>
+                        </div>
+                    </div>
+                </Modal>
+            )}
         </div>
     );
 };

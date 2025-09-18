@@ -22,7 +22,7 @@ async function setupDatabase() {
     console.log('Database created/verified');
     
     // Switch to the database
-    await connection.execute(`USE ${process.env.DB_DATABASE || 'onboarding_portal'}`);
+    await connection.query(`USE ${process.env.DB_DATABASE || 'onboarding_portal'}`);
     
     // Read and execute the SQL schema
     const sqlContent = fs.readFileSync('./ai_studio_code.sql', 'utf8');

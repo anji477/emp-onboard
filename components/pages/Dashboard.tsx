@@ -10,14 +10,30 @@ import { TaskStatus, Task } from '../../types';
 const Dashboard: React.FC = () => {
   const auth = useContext(UserContext);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [progress, setProgress] = useState(0);
   
   useEffect(() => {
     fetchTasks();
-  }, []);
+    if (auth?.user?.id) {
+      fetchProgress();
+    }
+    
+    // Listen for task updates
+    const handleTaskUpdate = () => {
+      if (auth?.user?.id) {
+        fetchProgress();
+      }
+    };
+    
+    window.addEventListener('taskUpdated', handleTaskUpdate);
+    return () => window.removeEventListener('taskUpdated', handleTaskUpdate);
+  }, [auth?.user?.id]);
 
   const fetchTasks = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/tasks');
+      const response = await fetch('/api/tasks', {
+        credentials: 'include'
+      });
       const tasksData = await response.json();
       const formattedTasks = tasksData.map((task: any) => ({
         id: task.id.toString(),
@@ -29,6 +45,18 @@ const Dashboard: React.FC = () => {
       setTasks(formattedTasks);
     } catch (error) {
       console.error('Error fetching tasks:', error);
+    }
+  };
+
+  const fetchProgress = async () => {
+    try {
+      const response = await fetch(`/api/users/${auth?.user?.id}/progress`, {
+        credentials: 'include'
+      });
+      const progressData = await response.json();
+      setProgress(progressData.progress);
+    } catch (error) {
+      console.error('Error fetching progress:', error);
     }
   };
 
@@ -53,8 +81,8 @@ const Dashboard: React.FC = () => {
 
       <Card>
         <h2 className="text-xl font-semibold text-gray-700 mb-4">Your Onboarding Progress</h2>
-        <ProgressBar progress={user.onboardingProgress} />
-        <p className="text-sm text-gray-500 mt-2 text-right">{user.onboardingProgress}% Complete</p>
+        <ProgressBar progress={progress} />
+        <p className="text-sm text-gray-500 mt-2 text-right">{progress}% Complete</p>
       </Card>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
