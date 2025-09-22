@@ -78,6 +78,32 @@ await pool.execute(`
   )
 `);
 
+await pool.execute(`
+  CREATE TABLE IF NOT EXISTS organization_settings (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    setting_key VARCHAR(100) NOT NULL UNIQUE,
+    setting_value JSON NOT NULL,
+    category ENUM('company', 'security', 'notifications', 'policies') NOT NULL,
+    description TEXT,
+    updated_by INT,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
+  )
+`);
+
+// Insert default settings if table is empty
+const [settingsCount] = await pool.execute('SELECT COUNT(*) as count FROM organization_settings');
+if (settingsCount[0].count === 0) {
+  await pool.execute(`
+    INSERT INTO organization_settings (setting_key, setting_value, category, description) VALUES
+    ('company_info', '{"name": "Your Company", "logo": "", "primaryColor": "#6366f1", "secondaryColor": "#f3f4f6", "darkMode": false}', 'company', 'Company branding and identity'),
+    ('working_hours', '{"startTime": "09:00", "endTime": "17:00", "timezone": "UTC", "workingDays": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]}', 'policies', 'Default working hours'),
+    ('password_policy', '{"minLength": 8, "requireUppercase": true, "requireNumbers": true, "expiryDays": 90}', 'security', 'Password requirements'),
+    ('notification_preferences', '{"email": {"enabled": true, "onboarding": true, "taskReminders": true}, "sms": {"enabled": false}}', 'notifications', 'Notification settings')
+  `);
+}
+
 // Tables created successfully - no sample data inserted
 
 export default pool;

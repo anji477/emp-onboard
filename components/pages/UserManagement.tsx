@@ -23,6 +23,7 @@ const UserManagement: React.FC = () => {
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [notification, setNotification] = useState('');
+  const [deleteUser, setDeleteUser] = useState<User | null>(null);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -126,22 +127,23 @@ const UserManagement: React.FC = () => {
     }
   };
 
-  const handleDeleteUser = async (userId: number) => {
-    if (!confirm('Are you sure you want to delete this user?')) return;
+  const handleDeleteUser = async () => {
+    if (!deleteUser) return;
     
     try {
-      const response = await fetch(`/api/users/${userId}`, {
+      const response = await fetch(`/api/users/${deleteUser.id}`, {
         method: 'DELETE'
       });
       
       if (response.ok) {
-        setUsers(users.filter(u => u.id !== userId));
-        setNotification('User deleted successfully!');
+        setUsers(users.filter(u => u.id !== deleteUser.id));
+        setNotification(`User "${deleteUser.name}" deleted successfully!`);
         setTimeout(() => setNotification(''), 3000);
       }
     } catch (error) {
       console.error('Error deleting user:', error);
     }
+    setDeleteUser(null);
   };
 
   const resetForm = () => {
@@ -177,8 +179,8 @@ const UserManagement: React.FC = () => {
     <div className="space-y-8">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800">User Management</h1>
-          <p className="text-gray-600 mt-1">Manage employees and administrators.</p>
+          <h1 className="text-3xl font-bold text-gray-800 dark:text-white">User Management</h1>
+          <p className="text-gray-600 dark:text-gray-300 mt-1">Manage employees and administrators.</p>
         </div>
         <div className="flex gap-2">
           <button 
@@ -207,24 +209,24 @@ const UserManagement: React.FC = () => {
       <Card>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+            <thead className="bg-gray-50 dark:bg-gray-700">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">User</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Team</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Progress</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">User</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Role</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Team</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Progress</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Actions</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {users.map(user => (
                 <tr key={user.id}>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <img className="h-10 w-10 rounded-full" src={`https://ui-avatars.com/api/?name=${user.name}&background=6366f1&color=fff`} alt="" />
                       <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">{user.name}</div>
-                        <div className="text-sm text-gray-500">{user.email}</div>
+                        <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{user.name}</div>
+                        <div className="text-sm text-gray-500 dark:text-gray-400">{user.email}</div>
                       </div>
                     </div>
                   </td>
@@ -236,8 +238,8 @@ const UserManagement: React.FC = () => {
                       {user.role}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.team || 'N/A'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.onboarding_progress}%</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{user.team || 'N/A'}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{user.onboarding_progress}%</td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex items-center justify-end space-x-2">
                       <button 
@@ -247,7 +249,7 @@ const UserManagement: React.FC = () => {
                         <Icon name="pencil" className="w-5 h-5" />
                       </button>
                       <button 
-                        onClick={() => handleDeleteUser(user.id)}
+                        onClick={() => setDeleteUser(user)}
                         className="text-red-600 hover:text-red-900"
                       >
                         <Icon name="trash" className="w-5 h-5" />
@@ -478,6 +480,43 @@ const UserManagement: React.FC = () => {
                 className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {editingUser ? 'Update' : 'Add'} User
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+      
+      {/* Delete Confirmation Modal */}
+      {deleteUser && (
+        <Modal 
+          isOpen={true} 
+          onClose={() => setDeleteUser(null)} 
+          title="Delete User"
+        >
+          <div className="space-y-4">
+            <div className="flex items-center space-x-3">
+              <div className="flex-shrink-0">
+                <Icon name="exclamation-triangle" className="h-6 w-6 text-red-600" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-700">
+                  Are you sure you want to delete <strong>{deleteUser.name}</strong>? This action cannot be undone.
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex justify-end gap-2 pt-4 border-t">
+              <button 
+                onClick={() => setDeleteUser(null)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleDeleteUser}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+              >
+                Delete User
               </button>
             </div>
           </div>

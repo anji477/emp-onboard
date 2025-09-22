@@ -81,6 +81,15 @@ export interface Policy {
   category: string;
   summary: string;
   content: string;
+  file_url?: string;
+  file_name?: string;
+  file_type?: string;
+  file_size?: number;
+  version?: string;
+  effective_date?: string;
+  created_by?: number;
+  updated_at?: string;
+  created_at?: string;
 }
 
 export interface FeedbackSurvey {

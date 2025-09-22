@@ -44,22 +44,22 @@ const EmployeeAssetView: React.FC<AssetViewProps> = ({ assets, onAssetClick, onR
     return (
         <>
             <Card>
-                <h2 className="text-xl font-semibold text-gray-700 mb-4">Hardware</h2>
+                <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-4">Hardware</h2>
                 <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
+                        <thead className="bg-gray-50 dark:bg-gray-700">
                             <tr>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Asset Name</th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Serial Number</th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Asset Name</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Serial Number</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
+                        <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                             {hardwareAssets.map(asset => (
-                                <tr key={asset.id} onClick={() => onAssetClick(asset)} className="cursor-pointer hover:bg-gray-50 transition-colors">
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{asset.name}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{asset.serialNumber}</td>
+                                <tr key={asset.id} onClick={() => onAssetClick(asset)} className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">{asset.name}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{asset.serialNumber}</td>
                                     <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(asset.status)}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                         {asset.status === AssetStatus.Assigned && (
@@ -77,22 +77,22 @@ const EmployeeAssetView: React.FC<AssetViewProps> = ({ assets, onAssetClick, onR
             </Card>
 
             <Card>
-                <h2 className="text-xl font-semibold text-gray-700 mb-4">Software & Licenses</h2>
+                <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-4">Software & Licenses</h2>
                 <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
+                        <thead className="bg-gray-50 dark:bg-gray-700">
                             <tr>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Software/Service</th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">License Key / User ID</th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Software/Service</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">License Key / User ID</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
+                        <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                             {softwareAssets.map(asset => (
-                                <tr key={asset.id} onClick={() => onAssetClick(asset)} className="cursor-pointer hover:bg-gray-50 transition-colors">
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{asset.name}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{asset.serialNumber}</td>
+                                <tr key={asset.id} onClick={() => onAssetClick(asset)} className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">{asset.name}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{asset.serialNumber}</td>
                                     <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(asset.status)}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                         {asset.status === AssetStatus.Assigned && (
@@ -164,24 +164,24 @@ const AdminAssetView: React.FC<{ allAssets: ITAsset[]; onAssetClick: (asset: ITA
 
              <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
+                    <thead className="bg-gray-50 dark:bg-gray-700">
                         <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Asset</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Assigned To</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Asset</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Type</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Assigned To</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Status</th>
+                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Actions</th>
                         </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
+                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                         {filteredAssets.map(asset => (
                              <tr key={asset.id} onClick={() => onAssetClick(asset)} className="cursor-pointer hover:bg-gray-50 transition-colors">
                                 <td className="px-6 py-4 whitespace-nowrap">
-                                    <div className="text-sm font-medium text-gray-900">{asset.name}</div>
-                                    <div className="text-sm text-gray-500">{asset.serialNumber}</div>
+                                    <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{asset.name}</div>
+                                    <div className="text-sm text-gray-500 dark:text-gray-400">{asset.serialNumber}</div>
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{asset.type}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{asset.assignedTo || 'N/A'}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{asset.type}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{asset.assignedTo || 'N/A'}</td>
                                 <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(asset.status)}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                     <div className="flex items-center justify-end space-x-2">
@@ -380,8 +380,8 @@ const Assets: React.FC = () => {
         <div className="space-y-8">
             <div className="flex justify-between items-center flex-wrap gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-800">{isAdmin ? 'IT Asset Management' : 'IT Assets'}</h1>
-                    <p className="text-gray-600 mt-1">{isAdmin ? 'Filter, track, and manage all company assets.' : 'View your assigned hardware and software assets.'}</p>
+                    <h1 className="text-3xl font-bold text-gray-800 dark:text-white">{isAdmin ? 'IT Asset Management' : 'IT Assets'}</h1>
+                    <p className="text-gray-600 dark:text-gray-300 mt-1">{isAdmin ? 'Filter, track, and manage all company assets.' : 'View your assigned hardware and software assets.'}</p>
                 </div>
                 <Button onClick={() => setShowAddAssetModal(true)}>
                     <Icon name="plus" className="w-5 h-5 mr-2" />

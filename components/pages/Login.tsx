@@ -11,6 +11,10 @@ const Login: React.FC = () => {
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [showForgotPassword, setShowForgotPassword] = useState(false);
+    const [resetEmail, setResetEmail] = useState('');
+    const [resetMessage, setResetMessage] = useState('');
+    const [rememberMe, setRememberMe] = useState(false);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -22,7 +26,7 @@ const Login: React.FC = () => {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
-                body: JSON.stringify({ email, password })
+                body: JSON.stringify({ email, password, rememberMe })
             });
             
             const data = await response.json();
@@ -96,16 +100,27 @@ const Login: React.FC = () => {
 
                     <div className="flex items-center justify-between">
                         <div className="flex items-center">
-                            <input id="remember-me" name="remember-me" type="checkbox" className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded" />
+                            <input 
+                                id="remember-me" 
+                                name="remember-me" 
+                                type="checkbox" 
+                                checked={rememberMe}
+                                onChange={(e) => setRememberMe(e.target.checked)}
+                                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded" 
+                            />
                             <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
                                 Remember me
                             </label>
                         </div>
 
                         <div className="text-sm">
-                            <a href="#" className="font-medium text-indigo-600 hover:text-indigo-500">
+                            <button 
+                                type="button"
+                                onClick={() => setShowForgotPassword(true)}
+                                className="font-medium text-indigo-600 hover:text-indigo-500"
+                            >
                                 Forgot your password?
-                            </a>
+                            </button>
                         </div>
                     </div>
 
@@ -135,6 +150,77 @@ const Login: React.FC = () => {
                     </div>
                 </div>
             </div>
+            
+            {/* Forgot Password Modal */}
+            {showForgotPassword && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white p-6 rounded-lg max-w-md w-full mx-4">
+                        <h2 className="text-xl font-bold mb-4">Reset Password</h2>
+                        {resetMessage ? (
+                            <div className="text-center">
+                                <p className="text-green-600 mb-4">{resetMessage}</p>
+                                <button 
+                                    onClick={() => {
+                                        setShowForgotPassword(false);
+                                        setResetMessage('');
+                                        setResetEmail('');
+                                    }}
+                                    className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        ) : (
+                            <form onSubmit={async (e) => {
+                                e.preventDefault();
+                                setError('');
+                                try {
+                                    console.log('Sending reset request for:', resetEmail);
+                                    const response = await fetch('/api/forgot-password', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ email: resetEmail })
+                                    });
+                                    const data = await response.json();
+                                    console.log('Reset response:', data);
+                                    if (response.ok) {
+                                        setResetMessage(data.message);
+                                    } else {
+                                        setError(data.message || 'Failed to send reset email');
+                                    }
+                                } catch (error) {
+                                    console.error('Reset error:', error);
+                                    setError('Network error. Please try again.');
+                                }
+                            }}>
+                                <input
+                                    type="email"
+                                    value={resetEmail}
+                                    onChange={(e) => setResetEmail(e.target.value)}
+                                    placeholder="Enter your email"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded mb-4"
+                                    required
+                                />
+                                <div className="flex gap-2">
+                                    <button 
+                                        type="button"
+                                        onClick={() => setShowForgotPassword(false)}
+                                        className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button 
+                                        type="submit"
+                                        className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
+                                    >
+                                        Send Reset Link
+                                    </button>
+                                </div>
+                            </form>
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

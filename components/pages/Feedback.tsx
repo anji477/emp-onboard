@@ -24,12 +24,12 @@ const Feedback: React.FC = () => {
     return (
         <div className="space-y-8">
             <div>
-                <h1 className="text-3xl font-bold text-gray-800">Progress & Feedback</h1>
-                <p className="text-gray-600 mt-1">Track your onboarding journey and share your feedback with us.</p>
+                <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Progress & Feedback</h1>
+                <p className="text-gray-600 dark:text-gray-300 mt-1">Track your onboarding journey and share your feedback with us.</p>
             </div>
 
             <Card>
-                <h2 className="text-xl font-semibold text-gray-700 mb-8">Your Onboarding Timeline</h2>
+                <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-8">Your Onboarding Timeline</h2>
                 <div className="relative">
                     <div className="absolute left-1/2 top-4 bottom-0 w-0.5 bg-gray-300" style={{ transform: 'translateX(-50%)' }}></div>
                     <div className="grid grid-cols-4">
@@ -46,13 +46,13 @@ const Feedback: React.FC = () => {
             </Card>
             
             <Card>
-                <h2 className="text-xl font-semibold text-gray-700 mb-4">Feedback Surveys</h2>
+                <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-4">Feedback Surveys</h2>
                 <div className="space-y-4">
                     {mockFeedbackSurveys.map(survey => (
-                        <div key={survey.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                        <div key={survey.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
                             <div>
-                                <p className="font-medium text-gray-800">{survey.title}</p>
-                                <p className="text-sm text-gray-500">Timeline: {survey.timeline}</p>
+                                <p className="font-medium text-gray-800 dark:text-gray-200">{survey.title}</p>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">Timeline: {survey.timeline}</p>
                             </div>
                             <Button disabled={survey.completed} size="sm">
                                 {survey.completed ? 'Submitted' : 'Start Survey'}

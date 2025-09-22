@@ -13,6 +13,7 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
   const auth = useContext(UserContext);
   const isAdmin = auth?.user?.role === UserRole.Admin;
+  const isHR = auth?.user?.role === 'HR';
 
   const navItems = [
     { to: '/', icon: 'home', label: 'Dashboard' },
@@ -26,13 +27,18 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
     { to: '/profile', icon: 'user-circle', label: 'Profile' },
   ];
 
+  if (isAdmin || isHR) {
+    navItems.push({ to: '/assignments', icon: 'clipboard-document-list', label: 'Assignments' });
+  }
+
   if (isAdmin) {
     navItems.push({ to: '/admin', icon: 'cog-6-tooth', label: 'Admin Dashboard' });
     navItems.push({ to: '/users', icon: 'user-plus', label: 'User Management' });
+    navItems.push({ to: '/settings', icon: 'cog-8-tooth', label: 'Settings' });
   }
 
-  const linkClasses = "flex items-center px-4 py-2.5 text-gray-600 hover:bg-indigo-100 hover:text-indigo-700 rounded-lg transition-colors duration-200";
-  const activeLinkClasses = "bg-indigo-500 text-white hover:bg-indigo-500 hover:text-white";
+  const linkClasses = "flex items-center px-4 py-2.5 text-gray-600 dark:text-gray-300 hover:bg-indigo-100 dark:hover:bg-gray-700 hover:text-indigo-700 dark:hover:text-indigo-400 rounded-lg transition-colors duration-200";
+  const activeLinkClasses = "bg-indigo-500 dark:bg-indigo-600 text-white hover:bg-indigo-500 dark:hover:bg-indigo-600 hover:text-white";
 
   return (
     <>
@@ -43,10 +49,10 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
       ></div>
 
       <aside
-        className={`fixed inset-y-0 left-0 bg-white w-64 transform transition-transform duration-300 ease-in-out z-30 lg:relative lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
+        className={`fixed inset-y-0 left-0 bg-white dark:bg-gray-800 w-64 transform transition-all duration-300 ease-in-out z-30 lg:relative lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
       >
-        <div className="flex items-center justify-center h-20 border-b">
-          <h1 className="text-2xl font-bold text-indigo-600">Onboardly</h1>
+        <div className="flex items-center justify-center h-20 border-b border-gray-200 dark:border-gray-700">
+          <h1 className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">Onboardly</h1>
         </div>
         <nav className="mt-6 px-4">
           {navItems.map(item => (

@@ -1,0 +1,41 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Dark mode form inputs */
+.dark input,
+.dark select,
+.dark textarea {
+  background-color: rgb(55 65 81);
+  border-color: rgb(75 85 99);
+  color: white;
+}
+
+.dark input::placeholder {
+  color: rgb(156 163 175);
+}
+
+.dark input:focus,
+.dark select:focus,
+.dark textarea:focus {
+  border-color: rgb(99 102 241);
+  box-shadow: 0 0 0 1px rgb(99 102 241);
+}
+
+/* Dark mode labels */
+.dark label {
+  color: rgb(209 213 219) !important;
+}
+
+/* Dark mode notifications */
+.dark .bg-green-100 {
+  background-color: rgb(6 78 59) !important;
+  color: rgb(167 243 208) !important;
+  border-color: rgb(4 120 87) !important;
+}
+
+.dark .bg-blue-50 {
+  background-color: rgb(30 58 138) !important;
+  color: rgb(191 219 254) !important;
+  border-color: rgb(29 78 216) !important;
+}

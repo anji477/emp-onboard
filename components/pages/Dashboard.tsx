@@ -54,7 +54,8 @@ const Dashboard: React.FC = () => {
         credentials: 'include'
       });
       const progressData = await response.json();
-      setProgress(progressData.progress);
+      console.log('Progress data:', progressData);
+      setProgress(progressData.progress || 0);
     } catch (error) {
       console.error('Error fetching progress:', error);
     }
@@ -75,14 +76,14 @@ const Dashboard: React.FC = () => {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold text-gray-800">Welcome, {user.name}!</h1>
-        <p className="text-gray-600 mt-1">We're excited to have you on board. Here's a quick overview of your onboarding journey.</p>
+        <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Welcome, {user.name}!</h1>
+        <p className="text-gray-600 dark:text-gray-300 mt-1">We're excited to have you on board. Here's a quick overview of your onboarding journey.</p>
       </div>
 
       <Card>
-        <h2 className="text-xl font-semibold text-gray-700 mb-4">Your Onboarding Progress</h2>
+        <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-4">Your Onboarding Progress</h2>
         <ProgressBar progress={progress} />
-        <p className="text-sm text-gray-500 mt-2 text-right">{progress}% Complete</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 text-right">{progress}% Complete</p>
       </Card>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -93,7 +94,7 @@ const Dashboard: React.FC = () => {
                         <div className="p-4 bg-indigo-100 rounded-full mb-4">
                             <Icon name={link.icon} className="h-8 w-8 text-indigo-600" />
                         </div>
-                        <h3 className="font-semibold text-gray-700">{link.label}</h3>
+                        <h3 className="font-semibold text-gray-700 dark:text-gray-200">{link.label}</h3>
                     </div>
                 </Card>
               </Link>
@@ -102,13 +103,13 @@ const Dashboard: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <Card>
-          <h2 className="text-xl font-semibold text-gray-700 mb-4">Upcoming Tasks</h2>
+          <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-4">Upcoming Tasks</h2>
           <ul className="space-y-4">
             {upcomingTasks.map(task => (
               <li key={task.id} className="flex items-center justify-between">
                 <div>
-                  <p className="font-medium text-gray-800">{task.title}</p>
-                  <p className="text-sm text-gray-500">Due: {task.dueDate}</p>
+                  <p className="font-medium text-gray-800 dark:text-gray-200">{task.title}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Due: {task.dueDate}</p>
                 </div>
                 <Link to="/tasks" className="text-sm font-medium text-indigo-600 hover:text-indigo-800">View</Link>
               </li>
@@ -117,7 +118,7 @@ const Dashboard: React.FC = () => {
         </Card>
         {user.buddy && (
           <Card>
-            <h2 className="text-xl font-semibold text-gray-700 mb-4">Your Onboarding Buddy</h2>
+            <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-4">Your Onboarding Buddy</h2>
             <div className="flex items-center space-x-4">
               <img className="h-20 w-20 rounded-full object-cover" src={user.buddy.avatarUrl} alt="Buddy" />
               <div>

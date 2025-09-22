@@ -13,16 +13,22 @@ import Feedback from './components/pages/Feedback';
 import Profile from './components/pages/Profile';
 import AdminDashboard from './components/pages/AdminDashboard';
 import UserManagement from './components/pages/UserManagement';
+import Settings from './components/pages/Settings';
+import AssignmentManager from './components/pages/AssignmentManager';
 import Login from './components/pages/Login';
 import SetupPassword from './components/pages/SetupPassword';
+import ResetPassword from './components/pages/ResetPassword';
+import MaintenancePage from './components/MaintenancePage';
 import { User, UserRole } from './types';
 import { mockUser, mockAdmin } from './data/mockData';
+import { ThemeProvider } from './contexts/ThemeContext';
 
 export const UserContext = React.createContext<{ user: User | null; login: (role: UserRole) => void; logout: () => void; updateUser: (userData: Partial<User>) => void; } | null>(null);
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [maintenanceMode, setMaintenanceMode] = useState<{ enabled: boolean; message: string } | null>(null);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -73,14 +79,18 @@ const App: React.FC = () => {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
   }
 
+
+
   return (
-    <UserContext.Provider value={{ user, login, logout, updateUser }}>
-      <HashRouter>
+    <ThemeProvider>
+      <UserContext.Provider value={{ user, login, logout, updateUser }}>
+        <HashRouter>
         <Routes>
           {!user ? (
             <>
               <Route path="/login" element={<Login />} />
               <Route path="/setup-password" element={<SetupPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="*" element={<Navigate to="/login" replace />} />
             </>
           ) : (
@@ -97,13 +107,16 @@ const App: React.FC = () => {
                 <Route path="profile" element={<Profile />} />
                 {user.role === UserRole.Admin && <Route path="admin" element={<AdminDashboard />} />}
                 {user.role === UserRole.Admin && <Route path="users" element={<UserManagement />} />}
+                {user.role === UserRole.Admin && <Route path="settings" element={<Settings />} />}
+                {(user.role === UserRole.Admin || user.role === 'HR') && <Route path="assignments" element={<AssignmentManager />} />}
               </Route>
               <Route path="/login" element={<Navigate to="/" replace />} />
             </>
           )}
         </Routes>
-      </HashRouter>
-    </UserContext.Provider>
+        </HashRouter>
+      </UserContext.Provider>
+    </ThemeProvider>
   );
 };
 

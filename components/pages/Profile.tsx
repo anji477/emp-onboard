@@ -44,7 +44,7 @@ const Profile: React.FC = () => {
             const userId = auth.user.role === 'Admin' ? 1 : 2;
             console.log('Updating profile for user ID:', userId);
             
-            const response = await fetch(`http://localhost:3001/api/users/${userId}`, {
+            const response = await fetch(`/api/users/${userId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name, email, avatar_url: avatarUrl })
@@ -100,7 +100,7 @@ const Profile: React.FC = () => {
 
         try {
             const userId = auth.user.role === 'Admin' ? 1 : 6;
-            const response = await fetch(`http://localhost:3001/api/users/${userId}/password`, {
+            const response = await fetch(`/api/users/${userId}/password`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ currentPassword, newPassword })
@@ -126,8 +126,8 @@ const Profile: React.FC = () => {
     return (
         <div className="space-y-8">
             <div>
-                <h1 className="text-3xl font-bold text-gray-800">Profile & Settings</h1>
-                <p className="text-gray-600 mt-1">Manage your personal information and application preferences.</p>
+                <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Profile & Settings</h1>
+                <p className="text-gray-600 dark:text-gray-300 mt-1">Manage your personal information and application preferences.</p>
             </div>
 
             <Card>
@@ -166,11 +166,11 @@ const Profile: React.FC = () => {
                         </label>
                     </div>
                     <div className="w-full">
-                        <h2 className="text-xl font-semibold text-gray-700 mb-4">Personal Details</h2>
+                        <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-4">Personal Details</h2>
                         <form className="space-y-6" onSubmit={handleProfileUpdate}>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700">Full Name</label>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Full Name</label>
                                     <input 
                                         type="text" 
                                         value={name}
@@ -179,7 +179,7 @@ const Profile: React.FC = () => {
                                     />
                                 </div>
                                  <div>
-                                    <label className="block text-sm font-medium text-gray-700">Email Address</label>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Email Address</label>
                                     <input 
                                         type="email" 
                                         value={email}
@@ -188,11 +188,11 @@ const Profile: React.FC = () => {
                                     />
                                 </div>
                                  <div>
-                                    <label className="block text-sm font-medium text-gray-700">Role</label>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Role</label>
                                     <input type="text" defaultValue={user.role} disabled className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 bg-gray-100 sm:text-sm" />
                                 </div>
                                  <div>
-                                    <label className="block text-sm font-medium text-gray-700">Team</label>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Team</label>
                                     <input type="text" defaultValue={user.team} disabled className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 bg-gray-100 sm:text-sm" />
                                 </div>
                             </div>
@@ -211,10 +211,10 @@ const Profile: React.FC = () => {
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <Card>
-                    <h2 className="text-xl font-semibold text-gray-700 mb-4">Change Password</h2>
+                    <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-4">Change Password</h2>
                     <form className="space-y-4" onSubmit={handlePasswordUpdate}>
                          <div>
-                            <label className="block text-sm font-medium text-gray-700">Current Password</label>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Current Password</label>
                             <input 
                                 type="password"
                                 value={currentPassword}
@@ -222,7 +222,7 @@ const Profile: React.FC = () => {
                                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
                         </div>
                          <div>
-                            <label className="block text-sm font-medium text-gray-700">New Password</label>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">New Password</label>
                             <input
                                 type="password"
                                 value={newPassword}
@@ -230,7 +230,7 @@ const Profile: React.FC = () => {
                                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">Confirm New Password</label>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Confirm New Password</label>
                              <input
                                 type="password"
                                 value={confirmPassword}
@@ -248,17 +248,17 @@ const Profile: React.FC = () => {
                     </form>
                 </Card>
                 <Card>
-                    <h2 className="text-xl font-semibold text-gray-700 mb-4">Notification Preferences</h2>
+                    <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-4">Notification Preferences</h2>
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
-                            <span className="text-gray-700">Email Notifications</span>
+                            <span className="text-gray-700 dark:text-gray-300">Email Notifications</span>
                             <label className="relative inline-flex items-center cursor-pointer">
                                 <input type="checkbox" defaultChecked className="sr-only peer" />
                                 <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
                             </label>
                         </div>
                          <div className="flex items-center justify-between">
-                            <span className="text-gray-700">Push Notifications</span>
+                            <span className="text-gray-700 dark:text-gray-300">Push Notifications</span>
                             <label className="relative inline-flex items-center cursor-pointer">
                                 <input type="checkbox" className="sr-only peer" />
                                 <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
