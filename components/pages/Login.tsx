@@ -4,6 +4,7 @@ import { UserContext } from '../../App';
 import { UserRole } from '../../types';
 import Button from '../common/Button';
 import Icon from '../common/Icon';
+import Loader from '../common/Loader';
 
 const Login: React.FC = () => {
     const auth = useContext(UserContext);
@@ -126,7 +127,12 @@ const Login: React.FC = () => {
 
                     <div>
                         <Button type="submit" fullWidth disabled={loading}>
-                            {loading ? 'Signing in...' : 'Sign in'}
+                            {loading ? (
+                                <div className="flex items-center justify-center">
+                                    <Loader size="sm" color="white" />
+                                    <span className="ml-2">Signing in...</span>
+                                </div>
+                            ) : 'Sign in'}
                         </Button>
                     </div>
                 </form>
@@ -211,7 +217,7 @@ const Login: React.FC = () => {
                                     </button>
                                     <button 
                                         type="submit"
-                                        className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
+                                        className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 flex items-center"
                                     >
                                         Send Reset Link
                                     </button>

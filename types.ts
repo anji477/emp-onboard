@@ -6,11 +6,19 @@ export enum UserRole {
   IT = 'IT'
 }
 
+export enum DocumentPriority {
+  Low = 'Low',
+  Medium = 'Medium',
+  High = 'High',
+  Critical = 'Critical'
+}
+
 export interface User {
   id: string;
   name: string;
   email: string;
   role: UserRole;
+  availableRoles?: UserRole[];
   avatarUrl: string;
   manager?: string;
   team?: string;
@@ -39,8 +47,11 @@ export interface Task {
 export enum DocumentStatus {
   Pending = 'Pending',
   Uploaded = 'Uploaded',
+  InReview = 'In Review',
   Verified = 'Verified',
-  Rejected = 'Rejected'
+  Rejected = 'Rejected',
+  Overdue = 'Overdue',
+  Expired = 'Expired'
 }
 
 export interface UserDocument {
@@ -49,6 +60,33 @@ export interface UserDocument {
   status: DocumentStatus;
   actionDate?: string;
   rejectionReason?: string;
+  userId?: string;
+  userName?: string;
+  userEmail?: string;
+  fileUrl?: string;
+  fileName?: string;
+  fileSize?: number;
+  uploadedAt?: string;
+  priority?: 'Low' | 'Medium' | 'High' | 'Critical';
+}
+
+export interface DocumentTemplate {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  isRequired: boolean;
+  priority: 'Low' | 'Medium' | 'High' | 'Critical';
+  dueInDays?: number;
+}
+
+export interface DocumentStats {
+  total: number;
+  pending: number;
+  uploaded: number;
+  verified: number;
+  rejected: number;
+  overdue: number;
 }
 
 export interface CompanyDocument {
@@ -58,10 +96,25 @@ export interface CompanyDocument {
   url: string;
 }
 
+export interface DocumentFilter {
+  status: string;
+  user: string;
+  priority: string;
+  dateRange: string;
+  category: string;
+}
+
+export interface BulkAction {
+  action: 'verify' | 'reject' | 'delete' | 'assign';
+  documentIds: string[];
+  reason?: string;
+  userIds?: string[];
+}
+
 export interface TrainingModule {
   id: string;
   title: string;
-  type: 'Video' | 'PDF' | 'Quiz';
+  type: 'Video' | 'PDF' | 'DOC' | 'PPT' | 'Quiz';
   duration: string;
   completed: boolean;
   thumbnailUrl: string;
@@ -135,4 +188,20 @@ export interface Notification {
   message: string;
   timestamp: string;
   read: boolean;
+}
+
+export interface DocumentWorkflow {
+  id: string;
+  name: string;
+  steps: DocumentWorkflowStep[];
+  isActive: boolean;
+}
+
+export interface DocumentWorkflowStep {
+  id: string;
+  name: string;
+  order: number;
+  assignedRole: UserRole;
+  autoApprove?: boolean;
+  dueInDays?: number;
 }

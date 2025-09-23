@@ -23,6 +23,7 @@ interface SettingsData {
     minLength: number;
     requireUppercase: boolean;
     requireNumbers: boolean;
+    requireSymbols: boolean;
     expiryDays: number;
   };
   notification_preferences: {
@@ -108,7 +109,7 @@ const Settings: React.FC = () => {
         const transformedSettings: SettingsData = {
           company_info: data.company_info?.value || { name: '', logo: '', primaryColor: '#6366f1', secondaryColor: '#f3f4f6', darkMode: false },
           working_hours: data.working_hours?.value || { startTime: '09:00', endTime: '17:00', timezone: 'UTC', workingDays: [] },
-          password_policy: data.password_policy?.value || { minLength: 8, requireUppercase: true, requireNumbers: true, expiryDays: 90 },
+          password_policy: data.password_policy?.value || { minLength: 8, requireUppercase: true, requireNumbers: true, requireSymbols: true, expiryDays: 90 },
           notification_preferences: data.notification_preferences?.value || { email: { enabled: true, onboarding: true, taskReminders: true }, sms: { enabled: false } },
           backup_settings: data.backup_settings?.value || { autoBackup: true, frequency: 'daily', retentionDays: 30, location: 'cloud', encryption: true },
           maintenance_mode: data.maintenance_mode?.value || { enabled: false, message: 'System under maintenance', allowedRoles: ['Admin'] },
@@ -347,6 +348,16 @@ const Settings: React.FC = () => {
                     className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                   />
                   <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">Require numbers</span>
+                </label>
+                
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={settings.password_policy.requireSymbols}
+                    onChange={(e) => updateSetting('password_policy', 'requireSymbols', e.target.checked)}
+                    className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">Require special characters (!@#$%^&*)</span>
                 </label>
               </div>
             </div>

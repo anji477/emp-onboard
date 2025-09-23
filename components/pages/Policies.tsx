@@ -49,10 +49,29 @@ const Policies: React.FC = () => {
 
     const fetchPolicies = async () => {
         try {
-            const response = await fetch('/api/policies', {
-                credentials: 'include'
-            });
-            const policiesData = await response.json();
+            let policiesData = [];
+            
+            if (isAdminOrHR) {
+                // Admin/HR see all policies
+                const response = await fetch('/api/policies', { credentials: 'include' });
+                policiesData = await response.json();
+            } else {
+                // Employees see only assigned policies
+                const assignmentsResponse = await fetch(`/api/assignments/${auth?.user?.id}`, { credentials: 'include' });
+                if (assignmentsResponse.ok) {
+                    const assignments = await assignmentsResponse.json();
+                    const policyAssignments = assignments.filter((a: any) => a.item_type === 'policy');
+                    
+                    if (policyAssignments.length > 0) {
+                        const allPoliciesResponse = await fetch('/api/policies', { credentials: 'include' });
+                        const allPolicies = await allPoliciesResponse.json();
+                        policiesData = allPolicies.filter((p: any) => 
+                            policyAssignments.some((a: any) => a.item_id === p.id)
+                        );
+                    }
+                }
+            }
+            
             setPolicies(policiesData);
             if (policiesData.length > 0 && !selectedPolicy) {
                 setSelectedPolicy(policiesData[0]);
@@ -335,9 +354,9 @@ const Policies: React.FC = () => {
                                             </div>
                                         ) : (
                                             <div className="border rounded-md p-8 text-center bg-gray-50">
-                                                <Icon name="document" className="w-16 h-16 mx-auto text-blue-500 mb-4" />
+                                                <Icon name={selectedPolicy.file_type?.includes('presentation') ? 'presentation-chart-bar' : 'document'} className={`w-16 h-16 mx-auto mb-4 ${selectedPolicy.file_type?.includes('presentation') ? 'text-orange-500' : 'text-blue-500'}`} />
                                                 <h3 className="text-lg font-medium text-gray-900 mb-2">{selectedPolicy.file_name}</h3>
-                                                <p className="text-gray-600 mb-4">Word Document - Click to download and view</p>
+                                                <p className="text-gray-600 mb-4">{selectedPolicy.file_type?.includes('presentation') ? 'PowerPoint Presentation' : 'Document'} - Click to download and view</p>
                                                 <div className="flex justify-center gap-3">
                                                     <a
                                                         href={selectedPolicy.file_url}
@@ -410,7 +429,7 @@ const Policies: React.FC = () => {
                                         onChange={(e) => setUploadType(e.target.value as 'text' | 'file')}
                                         className="mr-2"
                                     />
-                                    Upload File (PDF/DOC)
+                                    Upload File (PDF/DOC/PPT)
                                 </label>
                             </div>
                         </div>
@@ -479,11 +498,11 @@ const Policies: React.FC = () => {
                                 <input
                                     ref={fileInputRef}
                                     type="file"
-                                    accept=".pdf,.doc,.docx"
+                                    accept=".pdf,.doc,.docx,.ppt,.pptx"
                                     onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
                                     className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
                                 />
-                                <p className="text-xs text-gray-500 mt-1">Supported formats: PDF, DOC, DOCX (Max 10MB)</p>
+                                <p className="text-xs text-gray-500 mt-1">Supported formats: PDF, DOC, DOCX, PPT, PPTX (Max 10MB)</p>
                                 {selectedFile && (
                                     <div className="mt-3 p-3 bg-gray-50 rounded-md">
                                         <p className="text-sm text-green-600 mb-2">Selected: {selectedFile.name}</p>
@@ -506,6 +525,17 @@ const Policies: React.FC = () => {
                                                     <div className="text-center">
                                                         <Icon name="document" className="w-8 h-8 mx-auto text-blue-500 mb-1" />
                                                         <p className="text-xs text-gray-600">Word Document Ready</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                                {(selectedFile.type === 'application/vnd.ms-powerpoint' || selectedFile.type === 'application/vnd.openxmlformats-officedocument.presentationml.presentation' || selectedFile.name.toLowerCase().endsWith('.ppt') || selectedFile.name.toLowerCase().endsWith('.pptx')) && (
+                                            <div className="mt-2">
+                                                <p className="text-xs text-blue-600 mb-1">Presentation Preview:</p>
+                                                <div className="border rounded h-32 bg-white flex items-center justify-center">
+                                                    <div className="text-center">
+                                                        <Icon name="presentation-chart-bar" className="w-8 h-8 mx-auto text-orange-500 mb-1" />
+                                                        <p className="text-xs text-gray-600">PowerPoint Ready</p>
                                                     </div>
                                                 </div>
                                             </div>
@@ -579,15 +609,50 @@ const Policies: React.FC = () => {
                             />
                         </div>
                         
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">Content</label>
-                            <textarea
-                                rows={6}
-                                value={formData.content}
-                                onChange={(e) => setFormData({...formData, content: e.target.value})}
-                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200"
-                            />
-                        </div>
+                        {editingPolicy?.file_url ? (
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Current File</label>
+                                <div className="p-3 bg-gray-50 rounded-md border">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <div className="flex items-center gap-2">
+                                            <Icon name={editingPolicy.file_type?.includes('presentation') ? 'presentation-chart-bar' : 'document'} className={`w-5 h-5 ${editingPolicy.file_type?.includes('presentation') ? 'text-orange-500' : 'text-blue-500'}`} />
+                                            <span className="text-sm font-medium">{editingPolicy.file_name}</span>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <a
+                                                href={editingPolicy.file_url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-indigo-600 hover:text-indigo-900 text-xs"
+                                            >
+                                                View
+                                            </a>
+                                            <a
+                                                href={editingPolicy.file_url}
+                                                download={editingPolicy.file_name}
+                                                className="text-green-600 hover:text-green-900 text-xs"
+                                            >
+                                                Download
+                                            </a>
+                                        </div>
+                                    </div>
+                                    <p className="text-xs text-gray-500">File type: {editingPolicy.file_type?.includes('presentation') ? 'PowerPoint Presentation' : editingPolicy.file_type?.includes('pdf') ? 'PDF Document' : 'Document'}</p>
+                                </div>
+                            </div>
+                        ) : null}
+                        
+                        {!editingPolicy?.file_url && (
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Content</label>
+                                <textarea
+                                    rows={6}
+                                    value={formData.content}
+                                    onChange={(e) => setFormData({...formData, content: e.target.value})}
+                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200"
+                                    placeholder="Policy content"
+                                />
+                            </div>
+                        )}
                         
                         <div className="flex justify-end gap-2 pt-4 border-t">
                             <Button variant="secondary" onClick={() => { setEditingPolicy(null); resetForm(); }}>

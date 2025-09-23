@@ -5,12 +5,15 @@ import { UserContext } from '../../App';
 import Card from '../common/Card';
 import ProgressBar from '../common/ProgressBar';
 import Icon from '../common/Icon';
+import Loader from '../common/Loader';
 import { TaskStatus, Task } from '../../types';
 
 const Dashboard: React.FC = () => {
   const auth = useContext(UserContext);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [progress, setProgress] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [progressLoading, setProgressLoading] = useState(true);
   
   useEffect(() => {
     fetchTasks();
@@ -31,6 +34,7 @@ const Dashboard: React.FC = () => {
 
   const fetchTasks = async () => {
     try {
+      setLoading(true);
       const response = await fetch('/api/tasks', {
         credentials: 'include'
       });
@@ -45,11 +49,14 @@ const Dashboard: React.FC = () => {
       setTasks(formattedTasks);
     } catch (error) {
       console.error('Error fetching tasks:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
   const fetchProgress = async () => {
     try {
+      setProgressLoading(true);
       const response = await fetch(`/api/users/${auth?.user?.id}/progress`, {
         credentials: 'include'
       });
@@ -58,6 +65,8 @@ const Dashboard: React.FC = () => {
       setProgress(progressData.progress || 0);
     } catch (error) {
       console.error('Error fetching progress:', error);
+    } finally {
+      setProgressLoading(false);
     }
   };
 
@@ -82,8 +91,16 @@ const Dashboard: React.FC = () => {
 
       <Card>
         <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-4">Your Onboarding Progress</h2>
-        <ProgressBar progress={progress} />
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 text-right">{progress}% Complete</p>
+        {progressLoading ? (
+          <div className="flex justify-center py-8">
+            <Loader text="Loading progress..." />
+          </div>
+        ) : (
+          <>
+            <ProgressBar progress={progress} />
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 text-right">{progress}% Complete</p>
+          </>
+        )}
       </Card>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -104,17 +121,25 @@ const Dashboard: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <Card>
           <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-4">Upcoming Tasks</h2>
-          <ul className="space-y-4">
-            {upcomingTasks.map(task => (
-              <li key={task.id} className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-gray-800 dark:text-gray-200">{task.title}</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Due: {task.dueDate}</p>
-                </div>
-                <Link to="/tasks" className="text-sm font-medium text-indigo-600 hover:text-indigo-800">View</Link>
-              </li>
-            ))}
-          </ul>
+          {loading ? (
+            <div className="flex justify-center py-8">
+              <Loader text="Loading tasks..." />
+            </div>
+          ) : upcomingTasks.length > 0 ? (
+            <ul className="space-y-4">
+              {upcomingTasks.map(task => (
+                <li key={task.id} className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-gray-800 dark:text-gray-200">{task.title}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Due: {task.dueDate}</p>
+                  </div>
+                  <Link to="/tasks" className="text-sm font-medium text-indigo-600 hover:text-indigo-800">View</Link>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-center text-gray-500 dark:text-gray-400 py-8">No records found</p>
+          )}
         </Card>
         {user.buddy && (
           <Card>

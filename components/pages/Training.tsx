@@ -5,6 +5,7 @@ import Card from '../common/Card';
 import Icon from '../common/Icon';
 import Button from '../common/Button';
 import Modal from '../common/Modal';
+import Loader from '../common/Loader';
 import { UserContext } from '../../App';
 
 const Training: React.FC = () => {
@@ -27,8 +28,16 @@ const Training: React.FC = () => {
     // Fetch training modules from server
     const fetchModules = async () => {
         try {
-            const userId = auth?.user?.id || '6';
-            const response = await fetch(`/api/training/user/${userId}`);
+            let response;
+            if (isAdmin) {
+                // Admin/HR see all training modules
+                response = await fetch('/api/training');
+            } else {
+                // Employees see only assigned training modules
+                const userId = auth?.user?.id || '6';
+                response = await fetch(`/api/training/user/${userId}`);
+            }
+            
             if (response.ok) {
                 const data = await response.json();
                 const formattedModules: TrainingModule[] = data.map((module: any) => ({
@@ -62,6 +71,8 @@ const Training: React.FC = () => {
             'application/pdf': ['.pdf'],
             'application/msword': ['.doc'],
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+            'application/vnd.ms-powerpoint': ['.ppt'],
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation': ['.pptx'],
             'video/mp4': ['.mp4'],
             'video/avi': ['.avi'],
             'video/quicktime': ['.mov'],
@@ -80,7 +91,7 @@ const Training: React.FC = () => {
         );
 
         if (!isValidType) {
-            return 'Invalid file type. Please upload PDF, DOC, DOCX, or video files.';
+            return 'Invalid file type. Please upload PDF, DOC, DOCX, PPT, PPTX, or video files.';
         }
 
         return null;
@@ -340,6 +351,28 @@ const Training: React.FC = () => {
                         )}
                     </div>
                 );
+            case 'PPT':
+                return (
+                    <div className="space-y-4">
+                        <div className="h-64 bg-gradient-to-br from-orange-50 to-red-100 dark:from-orange-900 dark:to-red-900 rounded-lg flex flex-col items-center justify-center border border-orange-200 dark:border-orange-700">
+                            <Icon name="presentation-chart-bar" className="w-20 h-20 text-orange-500 mb-4" />
+                            <h3 className="text-lg font-semibold text-orange-800 dark:text-orange-200 mb-2">PowerPoint Presentation</h3>
+                            <p className="text-orange-600 dark:text-orange-300 text-center text-sm">
+                                {hasFile ? 'Click "Open" to view in your browser or "Download" for offline access' : 'No presentation file available'}
+                            </p>
+                        </div>
+                        {hasFile && (
+                            <div className="flex gap-2">
+                                <a href={fullUrl} target="_blank" className="inline-flex items-center px-4 py-2 bg-orange-600 text-white rounded-md text-sm hover:bg-orange-700">
+                                    <Icon name="eye" className="w-4 h-4 mr-2" />Open Presentation
+                                </a>
+                                <a href={fullUrl} download className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50">
+                                    <Icon name="arrow-down-tray" className="w-4 h-4 mr-2" />Download
+                                </a>
+                            </div>
+                        )}
+                    </div>
+                );
             case 'Quiz':
                 const quizOptions = [
                     { id: 'quiz-option-1', text: 'To block all external websites' },
@@ -379,7 +412,7 @@ const Training: React.FC = () => {
     if (loading) {
         return (
             <div className="flex items-center justify-center h-64">
-                <div className="text-gray-500 dark:text-gray-400">Loading training modules...</div>
+                <Loader text="Loading training modules..." />
             </div>
         );
     }
@@ -419,6 +452,7 @@ const Training: React.FC = () => {
                                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                                     module.type === 'Video' ? 'bg-blue-100 text-blue-800' :
                                     module.type === 'PDF' ? 'bg-red-100 text-red-800' :
+                                    module.type === 'PPT' ? 'bg-orange-100 text-orange-800' :
                                     'bg-purple-100 text-purple-800'
                                 }`}>
                                     {module.type}
@@ -520,6 +554,7 @@ const Training: React.FC = () => {
                             >
                                 <option value="PDF">PDF</option>
                                 <option value="DOC">DOC</option>
+                                <option value="PPT">PPT</option>
                                 <option value="Video">Video</option>
                                 <option value="Quiz">Quiz</option>
                             </select>
@@ -546,11 +581,11 @@ const Training: React.FC = () => {
                             <input
                                 type="file"
                                 ref={fileInputRef}
-                                accept=".pdf,.doc,.docx,.mp4,.avi,.mov,.wmv,.flv,.webm"
+                                accept=".pdf,.doc,.docx,.ppt,.pptx,.mp4,.avi,.mov,.wmv,.flv,.webm"
                                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                 required
                             />
-                            <p className="text-xs text-gray-500 mt-1">Supported: PDF, DOC, DOCX, MP4, AVI, MOV, WMV, FLV, WEBM (Max: 100MB)</p>
+                            <p className="text-xs text-gray-500 mt-1">Supported: PDF, DOC, DOCX, PPT, PPTX, MP4, AVI, MOV, WMV, FLV, WEBM (Max: 100MB)</p>
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -569,7 +604,12 @@ const Training: React.FC = () => {
                                 Cancel
                             </Button>
                             <Button type="submit" disabled={uploading}>
-                                {uploading ? 'Uploading...' : 'Add Module'}
+                                {uploading ? (
+                                    <div className="flex items-center">
+                                        <Loader size="sm" color="white" />
+                                        <span className="ml-2">Uploading...</span>
+                                    </div>
+                                ) : 'Add Module'}
                             </Button>
                         </div>
                     </form>

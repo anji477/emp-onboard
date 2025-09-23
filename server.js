@@ -36,6 +36,10 @@ app.use('/uploads', express.static('uploads', {
       res.setHeader('Content-Type', 'application/msword');
     } else if (path.endsWith('.docx')) {
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+    } else if (path.endsWith('.ppt')) {
+      res.setHeader('Content-Type', 'application/vnd.ms-powerpoint');
+    } else if (path.endsWith('.pptx')) {
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.presentationml.presentation');
     }
   }
 }));
@@ -74,13 +78,13 @@ const upload = multer({
             return cb(null, true);
         }
         
-        // Allow PDF/DOC files for policy uploads
+        // Allow PDF/DOC/PPT files for policy uploads
         if (file.fieldname === 'policyFile') {
-            const allowedTypes = /\.(pdf|doc|docx)$/i;
+            const allowedTypes = /\.(pdf|doc|docx|ppt|pptx)$/i;
             if (allowedTypes.test(file.originalname)) {
                 return cb(null, true);
             } else {
-                return cb(new Error('Only PDF, DOC, and DOCX files are allowed for policies'));
+                return cb(new Error('Only PDF, DOC, DOCX, PPT, and PPTX files are allowed for policies'));
             }
         }
         
@@ -119,21 +123,19 @@ app.get('/api/test', async (req, res) => {
   }
 });
 
-// GET all tasks
-app.get('/api/tasks', async (req, res) => {
-  try {
-    const [tasks] = await db.execute('SELECT * FROM tasks');
-    res.json(tasks);
-  } catch (error) {
-    console.error('Error fetching tasks:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
-// GET all tasks for current user
+// GET all tasks for current user (or all tasks if Admin/HR)
 app.get('/api/tasks', verifyToken, async (req, res) => {
   try {
-    const [tasks] = await db.execute('SELECT * FROM tasks WHERE user_id = ?', [req.user.id]);
+    let tasks;
+    if (req.user.role === 'Admin' || req.user.role === 'HR') {
+      // Admin/HR can see all tasks
+      const [allTasks] = await db.execute('SELECT * FROM tasks ORDER BY id DESC');
+      tasks = allTasks;
+    } else {
+      // Regular users see only their own tasks
+      const [userTasks] = await db.execute('SELECT * FROM tasks WHERE user_id = ?', [req.user.id]);
+      tasks = userTasks;
+    }
     res.json(tasks);
   } catch (error) {
     console.error('Error fetching tasks:', error);
@@ -261,13 +263,27 @@ app.get('/api/me', verifyToken, async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
     
+    // Get available roles from user_roles table
+    let availableRoles = [user.role];
+    let currentRole = user.role;
+    
+    try {
+      const [userRoles] = await db.execute('SELECT role FROM user_roles WHERE user_id = ? AND is_active = TRUE ORDER BY created_at', [req.user.id]);
+      if (userRoles.length > 0) {
+        availableRoles = userRoles.map(r => r.role);
+      }
+    } catch (roleError) {
+      console.log('user_roles table not available, using single role');
+    }
+    
     // New users start with 0% progress - no automatic tasks created
     
     res.json({
       id: user.id,
       name: user.name,
       email: user.email,
-      role: user.role,
+      role: currentRole,
+      availableRoles: availableRoles,
       avatarUrl: user.avatar_url,
       team: user.team,
       jobTitle: user.job_title,
@@ -296,10 +312,33 @@ app.get('/api/admin/stats', verifyToken, requireRole(['Admin']), async (req, res
   }
 });
 
-// GET all users
-app.get('/api/users', verifyToken, requireRole(['Admin', 'HR']), async (req, res) => {
+// GET all users with their roles
+app.get('/api/users', verifyToken, async (req, res) => {
   try {
-    const [users] = await db.execute('SELECT * FROM users');
+    // For document assignment, allow HR/Admin to see all users, others see limited info
+    let query = 'SELECT id, name, email, role, team, job_title, onboarding_progress FROM users';
+    if (req.user.role === 'Admin' || req.user.role === 'HR') {
+      query = 'SELECT * FROM users';
+    }
+    
+    const [users] = await db.execute(query);
+    
+    // Get available roles from user_roles table for each user (Admin/HR only)
+    if (req.user.role === 'Admin' || req.user.role === 'HR') {
+      for (let user of users) {
+        try {
+          const [userRoles] = await db.execute('SELECT role FROM user_roles WHERE user_id = ? AND is_active = TRUE', [user.id]);
+          if (userRoles.length > 0) {
+            user.availableRoles = userRoles.map(r => r.role);
+          } else {
+            user.availableRoles = [user.role];
+          }
+        } catch (roleError) {
+          user.availableRoles = [user.role];
+        }
+      }
+    }
+    
     res.json(users);
   } catch (error) {
     console.error('Error fetching users:', error);
@@ -343,6 +382,65 @@ app.put('/api/users/:id', async (req, res) => {
   } catch (error) {
     console.error('Error updating user profile:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// SWITCH user role (Admin only or own role)
+app.put('/api/users/:id/switch-role', verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { role } = req.body;
+    
+    // Allow Admin to switch any user's role, or users to switch their own role
+    if (req.user.role !== 'Admin' && req.user.id != id) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+    
+    // Update the primary role in users table
+    await db.execute('UPDATE users SET role = ? WHERE id = ?', [role, id]);
+    
+    res.json({ message: 'Role switched successfully' });
+  } catch (error) {
+    console.error('Error switching role:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// GET user roles
+app.get('/api/users/:id/roles', verifyToken, requireRole(['Admin', 'HR']), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [roles] = await db.execute('SELECT role FROM user_roles WHERE user_id = ? AND is_active = TRUE', [id]);
+    res.json(roles.map(r => r.role));
+  } catch (error) {
+    console.error('Error fetching user roles:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// UPDATE user roles (Admin only)
+app.put('/api/users/:id/roles', verifyToken, requireRole(['Admin']), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { roles } = req.body;
+    
+    // Remove existing roles
+    await db.execute('DELETE FROM user_roles WHERE user_id = ?', [id]);
+    
+    // Add new roles
+    for (const role of roles) {
+      await db.execute('INSERT INTO user_roles (user_id, role) VALUES (?, ?)', [id, role]);
+    }
+    
+    // Update primary role in users table (first role)
+    if (roles.length > 0) {
+      await db.execute('UPDATE users SET role = ? WHERE id = ?', [roles[0], id]);
+    }
+    
+    res.json({ message: 'User roles updated successfully' });
+  } catch (error) {
+    console.error('Error updating user roles:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
@@ -433,7 +531,7 @@ app.put('/api/assets/:id', verifyToken, requireRole(['Admin']), async (req, res)
 });
 
 // CREATE new user
-app.post('/api/users', async (req, res) => {
+app.post('/api/users', verifyToken, requireRole(['Admin', 'HR']), async (req, res) => {
   try {
     console.log('POST /api/users - Request body:', req.body);
     const { name, email, password, role, team, job_title, start_date } = req.body;
@@ -471,7 +569,7 @@ app.post('/api/users', async (req, res) => {
 });
 
 // INVITE user
-app.post('/api/users/invite', async (req, res) => {
+app.post('/api/users/invite', verifyToken, requireRole(['Admin', 'HR']), async (req, res) => {
   try {
     const { name, email, role, team, job_title, start_date } = req.body;
     
@@ -677,6 +775,95 @@ app.put('/api/notifications/user/:userId/read-all', async (req, res) => {
   }
 });
 
+// CHANGE password (for authenticated users)
+app.post('/api/auth/change-password', verifyToken, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: 'Current password and new password are required' });
+    }
+    
+    // Get current user password hash
+    const [users] = await db.execute('SELECT password_hash FROM users WHERE id = ?', [req.user.id]);
+    const user = users[0];
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    // Verify current password
+    const isValidPassword = await bcrypt.compare(currentPassword, user.password_hash);
+    if (!isValidPassword) {
+      return res.status(400).json({ message: 'Current password is incorrect' });
+    }
+    
+    // Create password history table if it doesn't exist
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS password_history (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        password_hash VARCHAR(255) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `);
+    
+    // Check last 12 passwords
+    const [passwordHistory] = await db.execute(
+      'SELECT password_hash FROM password_history WHERE user_id = ? ORDER BY created_at DESC LIMIT 12',
+      [req.user.id]
+    );
+    
+    // Check if new password matches any of the last 12 passwords
+    for (const oldPassword of passwordHistory) {
+      const isReused = await bcrypt.compare(newPassword, oldPassword.password_hash);
+      if (isReused) {
+        return res.status(400).json({ message: 'Cannot reuse any of the last 12 passwords' });
+      }
+    }
+    
+    // Check for compromised passwords
+    const compromisedPasswords = [
+      'password', 'password123', 'password1', 'password12', 'password1234',
+      'admin', 'admin123', 'admin1', 'administrator', 'root', 'root123',
+      '123456', '1234567', '12345678', '123456789', '1234567890',
+      'qwerty', 'qwerty123', 'qwertyuiop', 'asdfgh', 'zxcvbn',
+      'welcome', 'welcome123', 'letmein', 'monkey', 'dragon',
+      'abc123', 'abcdef', 'abcd1234', 'test', 'test123',
+      'user', 'user123', 'guest', 'guest123', 'demo', 'demo123',
+      'login', 'login123', 'pass', 'pass123', 'secret', 'secret123'
+    ];
+    
+    const lowerPassword = newPassword.toLowerCase();
+    if (compromisedPasswords.some(weak => lowerPassword === weak || lowerPassword.includes(weak))) {
+      return res.status(400).json({ message: 'Password is too common and easily compromised. Please choose a stronger password.' });
+    }
+    
+    // Hash new password and update
+    const hashedNewPassword = await bcrypt.hash(newPassword, 12);
+    await db.execute('UPDATE users SET password_hash = ? WHERE id = ?', [hashedNewPassword, req.user.id]);
+    
+    // Store current password in history
+    await db.execute(
+      'INSERT INTO password_history (user_id, password_hash) VALUES (?, ?)',
+      [req.user.id, user.password_hash]
+    );
+    
+    // Keep only last 12 passwords in history
+    await db.execute(
+      'DELETE FROM password_history WHERE user_id = ? AND id NOT IN (SELECT id FROM (SELECT id FROM password_history WHERE user_id = ? ORDER BY created_at DESC LIMIT 12) AS temp)',
+      [req.user.id, req.user.id]
+    );
+    
+    console.log(`Password changed for user ${req.user.id}`);
+    res.json({ message: 'Password changed successfully' });
+  } catch (error) {
+    console.error('Error changing password:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // LOGIN authentication
 app.post('/api/login', async (req, res) => {
   try {
@@ -718,12 +905,26 @@ app.post('/api/login', async (req, res) => {
       maxAge: cookieMaxAge
     });
     
+    // Get available roles from user_roles table
+    let availableRoles = [userData.role];
+    let currentRole = userData.role;
+    
+    try {
+      const [userRoles] = await db.execute('SELECT role FROM user_roles WHERE user_id = ? AND is_active = TRUE ORDER BY created_at', [userData.id]);
+      if (userRoles.length > 0) {
+        availableRoles = userRoles.map(r => r.role);
+      }
+    } catch (roleError) {
+      console.log('user_roles table not available, using single role');
+    }
+    
     res.json({
       user: {
         id: userData.id,
         name: userData.name,
         email: userData.email,
-        role: userData.role,
+        role: currentRole,
+        availableRoles: availableRoles,
         avatarUrl: userData.avatar_url,
         team: userData.team,
         jobTitle: userData.job_title,
@@ -798,6 +999,21 @@ app.get('/api/init-settings', async (req, res) => {
       )
     `);
     
+    // Create task_categories table
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS task_categories (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(100) NOT NULL UNIQUE,
+        description TEXT,
+        color VARCHAR(7) DEFAULT '#6366f1',
+        is_active BOOLEAN DEFAULT TRUE,
+        created_by INT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+      )
+    `);
+    
     // Insert default settings if they don't exist
     const defaultSettings = [
       ['company_info', '{"name": "Your Company", "logo": "", "primaryColor": "#6366f1", "secondaryColor": "#f3f4f6", "darkMode": false}', 'company', 'Company branding and identity'],
@@ -817,10 +1033,69 @@ app.get('/api/init-settings', async (req, res) => {
       );
     }
     
-    res.json({ message: 'Settings initialized successfully' });
+    // Insert default task categories if they don't exist
+    const defaultCategories = [
+      ['General', 'General onboarding tasks', '#6366f1'],
+      ['Paperwork', 'Document and form completion tasks', '#10b981'],
+      ['IT Setup', 'Technology and system setup tasks', '#f59e0b'],
+      ['Training', 'Learning and training related tasks', '#8b5cf6'],
+      ['HR', 'Human resources related tasks', '#ef4444'],
+      ['Compliance', 'Compliance and policy related tasks', '#06b6d4']
+    ];
+    
+    for (const [name, description, color] of defaultCategories) {
+      await db.execute(
+        'INSERT IGNORE INTO task_categories (name, description, color, created_by) VALUES (?, ?, ?, ?)',
+        [name, description, color, 1]
+      );
+    }
+    
+    res.json({ message: 'Settings and categories initialized successfully' });
   } catch (error) {
     console.error('Error initializing settings:', error);
     res.status(500).json({ message: 'Failed to initialize settings' });
+  }
+});
+
+// Initialize database tables
+app.get('/api/init-db', async (req, res) => {
+  try {
+    // Create task_categories table
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS task_categories (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(100) NOT NULL UNIQUE,
+        description TEXT,
+        color VARCHAR(7) DEFAULT '#6366f1',
+        is_active BOOLEAN DEFAULT TRUE,
+        created_by INT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+      )
+    `);
+    
+    // Insert default task categories if they don't exist
+    const defaultCategories = [
+      ['General', 'General onboarding tasks', '#6366f1'],
+      ['Paperwork', 'Document and form completion tasks', '#10b981'],
+      ['IT Setup', 'Technology and system setup tasks', '#f59e0b'],
+      ['Training', 'Learning and training related tasks', '#8b5cf6'],
+      ['HR', 'Human resources related tasks', '#ef4444'],
+      ['Compliance', 'Compliance and policy related tasks', '#06b6d4']
+    ];
+    
+    for (const [name, description, color] of defaultCategories) {
+      await db.execute(
+        'INSERT IGNORE INTO task_categories (name, description, color, created_by) VALUES (?, ?, ?, ?)',
+        [name, description, color, 1]
+      );
+    }
+    
+    res.json({ message: 'Database initialized successfully' });
+  } catch (error) {
+    console.error('Error initializing database:', error);
+    res.status(500).json({ message: 'Failed to initialize database' });
   }
 });
 
@@ -1040,8 +1315,180 @@ app.get('/api/documents/user/:userId', async (req, res) => {
   }
 });
 
+// Get all user documents (HR/Admin only)
+app.get('/api/documents/all', verifyToken, requireRole(['Admin', 'HR']), async (req, res) => {
+  try {
+    const [rows] = await db.execute(`
+      SELECT 
+        ud.id,
+        ud.user_id,
+        ud.name,
+        ud.status,
+        ud.action_date,
+        ud.rejection_reason,
+        ud.file_url,
+        ud.file_name,
+        ud.file_size,
+        ud.uploaded_at,
+        ud.priority,
+        u.name as user_name, 
+        u.email as user_email,
+        u.team,
+        CASE 
+          WHEN ud.due_date < CURDATE() AND ud.status IN ('Pending', 'Uploaded') THEN 'Overdue'
+          ELSE ud.status
+        END as computed_status
+      FROM user_documents ud 
+      LEFT JOIN users u ON ud.user_id = u.id 
+      ORDER BY 
+        CASE COALESCE(ud.priority, 'Medium')
+          WHEN 'Critical' THEN 1
+          WHEN 'High' THEN 2
+          WHEN 'Medium' THEN 3
+          WHEN 'Low' THEN 4
+          ELSE 5
+        END,
+        ud.uploaded_at DESC
+    `);
+    
+    // Format response to match frontend expectations
+    const formattedRows = rows.map(row => ({
+      id: row.id.toString(),
+      name: row.name,
+      status: row.computed_status,
+      action_date: row.action_date,
+      rejection_reason: row.rejection_reason,
+      user_id: row.user_id,
+      user_name: row.user_name || 'Unknown User',
+      user_email: row.user_email || '',
+      file_url: row.file_url,
+      file_name: row.file_name,
+      file_size: row.file_size,
+      uploaded_at: row.uploaded_at,
+      priority: row.priority || 'Medium'
+    }));
+    
+    res.json(formattedRows);
+  } catch (error) {
+    console.error('Error fetching all documents:', error);
+    res.status(500).json({ error: 'Failed to fetch documents' });
+  }
+});
+
+// Get document analytics (HR/Admin only)
+app.get('/api/documents/analytics', verifyToken, requireRole(['Admin', 'HR']), async (req, res) => {
+  try {
+    const [stats] = await db.execute(`
+      SELECT 
+        COUNT(*) as total,
+        SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END) as pending,
+        SUM(CASE WHEN status = 'Uploaded' THEN 1 ELSE 0 END) as uploaded,
+        SUM(CASE WHEN status = 'Verified' THEN 1 ELSE 0 END) as verified,
+        SUM(CASE WHEN status = 'Rejected' THEN 1 ELSE 0 END) as rejected,
+        SUM(CASE WHEN due_date < CURDATE() AND status IN ('Pending', 'Uploaded') THEN 1 ELSE 0 END) as overdue
+      FROM user_documents
+    `);
+    
+    res.json({ 
+      stats: stats[0]
+    });
+  } catch (error) {
+    console.error('Error fetching document analytics:', error);
+    res.status(500).json({ error: 'Failed to fetch analytics' });
+  }
+});
+
+// Assign document to users (HR/Admin only)
+app.post('/api/documents/assign', verifyToken, requireRole(['Admin', 'HR']), async (req, res) => {
+  try {
+    const { documentName, userIds } = req.body;
+    
+    if (!documentName || !userIds || userIds.length === 0) {
+      return res.status(400).json({ error: 'Document name and user IDs are required' });
+    }
+    
+    // Insert document requirement for each user
+    for (const userId of userIds) {
+      if (userId) {
+        await db.execute(
+          'INSERT INTO user_documents (user_id, name, status) VALUES (?, ?, "Pending") ON DUPLICATE KEY UPDATE status = "Pending"',
+          [userId, documentName]
+        );
+      }
+    }
+    
+    res.json({ message: 'Document assigned successfully' });
+  } catch (error) {
+    console.error('Error assigning document:', error);
+    res.status(500).json({ error: 'Failed to assign document' });
+  }
+});
+
+// Create document template (HR/Admin only)
+app.post('/api/documents/templates', verifyToken, requireRole(['Admin', 'HR']), async (req, res) => {
+  try {
+    const { name, description, category, priority, dueInDays, isRequired } = req.body;
+    
+    if (!name) {
+      return res.status(400).json({ error: 'Template name is required' });
+    }
+    
+    const [result] = await db.execute(
+      'INSERT INTO document_templates (name, description, category, priority, due_in_days, is_required, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [name, description || '', category || 'General', priority || 'Medium', dueInDays || null, isRequired || true, req.user.id]
+    );
+    
+    const [template] = await db.execute('SELECT * FROM document_templates WHERE id = ?', [result.insertId]);
+    res.json(template[0]);
+  } catch (error) {
+    console.error('Error creating template:', error);
+    res.status(500).json({ error: 'Failed to create template' });
+  }
+});
+
+// Get document templates (HR/Admin only)
+app.get('/api/documents/templates', verifyToken, requireRole(['Admin', 'HR']), async (req, res) => {
+  try {
+    const [templates] = await db.execute('SELECT * FROM document_templates WHERE is_active = TRUE ORDER BY name');
+    res.json(templates);
+  } catch (error) {
+    console.error('Error fetching templates:', error);
+    res.status(500).json({ error: 'Failed to fetch templates' });
+  }
+});
+
+// Bulk document actions (HR/Admin only)
+app.post('/api/documents/bulk-action', verifyToken, requireRole(['Admin', 'HR']), async (req, res) => {
+  try {
+    const { action, documentIds, rejectionReason } = req.body;
+    
+    if (!action || !documentIds || documentIds.length === 0) {
+      return res.status(400).json({ error: 'Action and document IDs are required' });
+    }
+    
+    const placeholders = documentIds.map(() => '?').join(',');
+    
+    if (action === 'verify') {
+      await db.execute(
+        `UPDATE user_documents SET status = 'Verified', action_date = CURDATE(), rejection_reason = NULL WHERE id IN (${placeholders})`,
+        documentIds
+      );
+    } else if (action === 'reject') {
+      await db.execute(
+        `UPDATE user_documents SET status = 'Rejected', action_date = CURDATE(), rejection_reason = ? WHERE id IN (${placeholders})`,
+        [rejectionReason || 'Bulk rejection', ...documentIds]
+      );
+    }
+    
+    res.json({ success: true, message: `${documentIds.length} documents ${action}ed successfully` });
+  } catch (error) {
+    console.error('Error performing bulk action:', error);
+    res.status(500).json({ error: 'Failed to perform bulk action' });
+  }
+});
+
 // Update document status (verify/reject)
-app.put('/api/documents/:id/status', async (req, res) => {
+app.put('/api/documents/:id/status', verifyToken, requireRole(['Admin', 'HR']), async (req, res) => {
   try {
     const { id } = req.params;
     const { status, rejectionReason } = req.body;
@@ -1290,10 +1737,26 @@ app.post('/api/documents/upload', upload.single('document'), async (req, res) =>
       originalName: req.file.originalname
     });
     
-    const [result] = await db.execute(
-      'INSERT INTO user_documents (user_id, name, status, file_url, file_name, file_size, file_type, uploaded_at) VALUES (?, ?, "Uploaded", ?, ?, ?, ?, NOW()) ON DUPLICATE KEY UPDATE status = "Uploaded", file_url = VALUES(file_url), file_name = VALUES(file_name), file_size = VALUES(file_size), file_type = VALUES(file_type), uploaded_at = NOW(), action_date = CURDATE()',
-      [userId, documentName, fileUrl, req.file.originalname, req.file.size, req.file.mimetype]
+    // Check if document already exists for this user
+    const [existing] = await db.execute(
+      'SELECT id FROM user_documents WHERE user_id = ? AND name = ?',
+      [userId, documentName]
     );
+    
+    let result;
+    if (existing.length > 0) {
+      // Update existing document
+      result = await db.execute(
+        'UPDATE user_documents SET status = "Uploaded", file_url = ?, file_name = ?, file_size = ?, file_type = ?, uploaded_at = NOW(), action_date = CURDATE(), rejection_reason = NULL WHERE user_id = ? AND name = ?',
+        [fileUrl, req.file.originalname, req.file.size, req.file.mimetype, userId, documentName]
+      );
+    } else {
+      // Insert new document
+      result = await db.execute(
+        'INSERT INTO user_documents (user_id, name, status, file_url, file_name, file_size, file_type, uploaded_at) VALUES (?, ?, "Uploaded", ?, ?, ?, ?, NOW())',
+        [userId, documentName, fileUrl, req.file.originalname, req.file.size, req.file.mimetype]
+      );
+    }
 
     console.log('Document saved successfully:', result);
 
@@ -1432,8 +1895,96 @@ app.get('/api/common-items', verifyToken, async (req, res) => {
   }
 });
 
+// Task Categories Management
+
+// GET all task categories
+app.get('/api/task-categories', verifyToken, async (req, res) => {
+  try {
+    console.log('Fetching task categories...');
+    const [categories] = await db.execute('SELECT * FROM task_categories WHERE is_active = TRUE ORDER BY name');
+    console.log('Found categories:', categories.length);
+    res.json(categories);
+  } catch (error) {
+    console.error('Error fetching task categories:', error);
+    // If table doesn't exist, return empty array
+    if (error.code === 'ER_NO_SUCH_TABLE') {
+      console.log('Task categories table does not exist, returning empty array');
+      return res.json([]);
+    }
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// CREATE new task category (Admin/HR only)
+app.post('/api/task-categories', verifyToken, requireRole(['Admin', 'HR']), async (req, res) => {
+  try {
+    const { name, description, color } = req.body;
+    console.log('Creating category:', { name, description, color, userId: req.user.id });
+    
+    if (!name) {
+      return res.status(400).json({ message: 'Category name is required' });
+    }
+    
+    const [result] = await db.execute(
+      'INSERT INTO task_categories (name, description, color, created_by) VALUES (?, ?, ?, ?)',
+      [name, description || '', color || '#6366f1', req.user.id]
+    );
+    
+    console.log('Insert result:', result);
+    
+    const [newCategory] = await db.execute('SELECT * FROM task_categories WHERE id = ?', [result.insertId]);
+    console.log('New category created:', newCategory[0]);
+    res.status(201).json(newCategory[0]);
+  } catch (error) {
+    console.error('Error creating task category:', error);
+    if (error.code === 'ER_DUP_ENTRY') {
+      return res.status(400).json({ message: 'Category name already exists' });
+    }
+    if (error.code === 'ER_NO_SUCH_TABLE') {
+      return res.status(500).json({ message: 'Database table not initialized. Please contact administrator.' });
+    }
+    res.status(500).json({ message: 'Server error: ' + error.message });
+  }
+});
+
+// UPDATE task category (Admin/HR only)
+app.put('/api/task-categories/:id', verifyToken, requireRole(['Admin', 'HR']), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description, color } = req.body;
+    
+    await db.execute(
+      'UPDATE task_categories SET name = ?, description = ?, color = ? WHERE id = ?',
+      [name, description, color, id]
+    );
+    
+    const [updatedCategory] = await db.execute('SELECT * FROM task_categories WHERE id = ?', [id]);
+    res.json(updatedCategory[0]);
+  } catch (error) {
+    if (error.code === 'ER_DUP_ENTRY') {
+      return res.status(400).json({ message: 'Category name already exists' });
+    }
+    console.error('Error updating task category:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// DELETE task category (Admin/HR only)
+app.delete('/api/task-categories/:id', verifyToken, requireRole(['Admin', 'HR']), async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Soft delete - mark as inactive
+    await db.execute('UPDATE task_categories SET is_active = FALSE WHERE id = ?', [id]);
+    res.json({ message: 'Category deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting task category:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // --- Start the server ---
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server is running on http://0.0.0.0:${PORT}`);
 });

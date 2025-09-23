@@ -84,6 +84,7 @@ const App: React.FC = () => {
   return (
     <ThemeProvider>
       <UserContext.Provider value={{ user, login, logout, updateUser }}>
+
         <HashRouter>
         <Routes>
           {!user ? (

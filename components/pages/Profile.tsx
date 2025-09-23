@@ -20,14 +20,58 @@ const Profile: React.FC = () => {
     const [confirmPassword, setConfirmPassword] = useState('');
     const [passwordMessage, setPasswordMessage] = useState('');
     const [passwordMessageType, setPasswordMessageType] = useState<'success' | 'error' | null>(null);
+    const [showPasswords, setShowPasswords] = useState({ current: false, new: false, confirm: false });
+    const [passwordPolicy, setPasswordPolicy] = useState({ minLength: 8, requireUppercase: true, requireNumbers: true, requireSymbols: true });
     
     useEffect(() => {
         if (auth?.user) {
             setName(auth.user.name);
             setEmail(auth.user.email);
             setAvatarUrl(auth.user.avatarUrl || '');
+            fetchPasswordPolicy();
         }
     }, [auth?.user]);
+    
+    const fetchPasswordPolicy = async () => {
+        try {
+            const response = await fetch('/api/settings', { credentials: 'include' });
+            if (response.ok) {
+                const data = await response.json();
+                const policy = data.password_policy?.value || { minLength: 8, requireUppercase: true, requireNumbers: true, requireSymbols: true };
+                setPasswordPolicy(policy);
+            }
+        } catch (error) {
+            console.error('Error fetching password policy:', error);
+        }
+    };
+    
+    const validatePassword = (password: string) => {
+        const errors = [];
+        if (password.length < passwordPolicy.minLength) errors.push(`at least ${passwordPolicy.minLength} characters`);
+        if (passwordPolicy.requireUppercase && !/[A-Z]/.test(password)) errors.push('one uppercase letter');
+        if (!/[a-z]/.test(password)) errors.push('one lowercase letter');
+        if (passwordPolicy.requireNumbers && !/\d/.test(password)) errors.push('one number');
+        if (passwordPolicy.requireSymbols && !/[!@#$%^&*(),.?":{}|<>]/.test(password)) errors.push('one special character');
+        
+        // Check for compromised passwords
+        const compromisedPasswords = [
+            'password', 'password123', 'password1', 'password12', 'password1234',
+            'admin', 'admin123', 'admin1', 'administrator', 'root', 'root123',
+            '123456', '1234567', '12345678', '123456789', '1234567890',
+            'qwerty', 'qwerty123', 'qwertyuiop', 'asdfgh', 'zxcvbn',
+            'welcome', 'welcome123', 'letmein', 'monkey', 'dragon',
+            'abc123', 'abcdef', 'abcd1234', 'test', 'test123',
+            'user', 'user123', 'guest', 'guest123', 'demo', 'demo123',
+            'login', 'login123', 'pass', 'pass123', 'secret', 'secret123'
+        ];
+        
+        const lowerPassword = password.toLowerCase();
+        if (compromisedPasswords.some(weak => lowerPassword === weak || lowerPassword.includes(weak))) {
+            errors.push('password is too common and easily compromised');
+        }
+        
+        return errors;
+    };
 
     if (!auth || !auth.user) {
         return null;
@@ -86,8 +130,15 @@ const Profile: React.FC = () => {
         setPasswordMessage('');
         setPasswordMessageType(null);
 
-        if (!newPassword || !confirmPassword) {
-            setPasswordMessage('Please fill in the new password fields.');
+        if (!currentPassword) {
+            setPasswordMessage('Current password is required');
+            setPasswordMessageType('error');
+            return;
+        }
+
+        const passwordErrors = validatePassword(newPassword);
+        if (passwordErrors.length > 0) {
+            setPasswordMessage(`Password must contain ${passwordErrors.join(', ')}`);
             setPasswordMessageType('error');
             return;
         }
@@ -98,11 +149,17 @@ const Profile: React.FC = () => {
             return;
         }
 
+        if (currentPassword === newPassword) {
+            setPasswordMessage('New password must be different from current password');
+            setPasswordMessageType('error');
+            return;
+        }
+
         try {
-            const userId = auth.user.role === 'Admin' ? 1 : 6;
-            const response = await fetch(`/api/users/${userId}/password`, {
-                method: 'PUT',
+            const response = await fetch('/api/auth/change-password', {
+                method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify({ currentPassword, newPassword })
             });
             
@@ -215,27 +272,117 @@ const Profile: React.FC = () => {
                     <form className="space-y-4" onSubmit={handlePasswordUpdate}>
                          <div>
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Current Password</label>
-                            <input 
-                                type="password"
-                                value={currentPassword}
-                                onChange={(e) => setCurrentPassword(e.target.value)}
-                                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                            <div className="relative">
+                                <input 
+                                    type={showPasswords.current ? "text" : "password"}
+                                    value={currentPassword}
+                                    onChange={(e) => setCurrentPassword(e.target.value)}
+                                    className="mt-1 block w-full pr-10 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" 
+                                    required
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPasswords({...showPasswords, current: !showPasswords.current})}
+                                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                                >
+                                    {showPasswords.current ? (
+                                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
+                                        </svg>
+                                    ) : (
+                                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        </svg>
+                                    )}
+                                </button>
+                            </div>
                         </div>
                          <div>
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">New Password</label>
-                            <input
-                                type="password"
-                                value={newPassword}
-                                onChange={(e) => setNewPassword(e.target.value)}
-                                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                            <div className="relative">
+                                <input
+                                    type={showPasswords.new ? "text" : "password"}
+                                    value={newPassword}
+                                    onChange={(e) => setNewPassword(e.target.value)}
+                                    className="mt-1 block w-full pr-10 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" 
+                                    required
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPasswords({...showPasswords, new: !showPasswords.new})}
+                                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                                >
+                                    {showPasswords.new ? (
+                                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
+                                        </svg>
+                                    ) : (
+                                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        </svg>
+                                    )}
+                                </button>
+                            </div>
+                            {newPassword && (
+                                <div className="mt-2 text-xs space-y-1">
+                                    <div className={`flex items-center ${newPassword.length >= passwordPolicy.minLength ? 'text-green-600' : 'text-red-600'}`}>
+                                        <span className="mr-1">{newPassword.length >= passwordPolicy.minLength ? '✓' : '✗'}</span>
+                                        At least {passwordPolicy.minLength} characters
+                                    </div>
+                                    {passwordPolicy.requireUppercase && (
+                                        <div className={`flex items-center ${/[A-Z]/.test(newPassword) ? 'text-green-600' : 'text-red-600'}`}>
+                                            <span className="mr-1">{/[A-Z]/.test(newPassword) ? '✓' : '✗'}</span>
+                                            One uppercase letter
+                                        </div>
+                                    )}
+                                    <div className={`flex items-center ${/[a-z]/.test(newPassword) ? 'text-green-600' : 'text-red-600'}`}>
+                                        <span className="mr-1">{/[a-z]/.test(newPassword) ? '✓' : '✗'}</span>
+                                        One lowercase letter
+                                    </div>
+                                    {passwordPolicy.requireNumbers && (
+                                        <div className={`flex items-center ${/\d/.test(newPassword) ? 'text-green-600' : 'text-red-600'}`}>
+                                            <span className="mr-1">{/\d/.test(newPassword) ? '✓' : '✗'}</span>
+                                            One number
+                                        </div>
+                                    )}
+                                    {passwordPolicy.requireSymbols && (
+                                        <div className={`flex items-center ${/[!@#$%^&*(),.?":{}|<>]/.test(newPassword) ? 'text-green-600' : 'text-red-600'}`}>
+                                            <span className="mr-1">{/[!@#$%^&*(),.?":{}|<>]/.test(newPassword) ? '✓' : '✗'}</span>
+                                            One special character
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Confirm New Password</label>
-                             <input
-                                type="password"
-                                value={confirmPassword}
-                                onChange={(e) => setConfirmPassword(e.target.value)}
-                                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                            <div className="relative">
+                                <input
+                                    type={showPasswords.confirm ? "text" : "password"}
+                                    value={confirmPassword}
+                                    onChange={(e) => setConfirmPassword(e.target.value)}
+                                    className="mt-1 block w-full pr-10 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" 
+                                    required
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPasswords({...showPasswords, confirm: !showPasswords.confirm})}
+                                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                                >
+                                    {showPasswords.confirm ? (
+                                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
+                                        </svg>
+                                    ) : (
+                                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        </svg>
+                                    )}
+                                </button>
+                            </div>
                         </div>
                         {passwordMessage && (
                             <div className={`text-sm ${passwordMessageType === 'success' ? 'text-green-600' : 'text-red-600'}`}>

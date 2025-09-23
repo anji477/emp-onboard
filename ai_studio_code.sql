@@ -175,6 +175,19 @@ CREATE TABLE `user_assignments` (
   FOREIGN KEY (`assigned_by`) REFERENCES `users`(`id`) ON DELETE CASCADE
 );
 
+-- Create Task Categories table
+CREATE TABLE `task_categories` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `name` VARCHAR(100) NOT NULL UNIQUE,
+  `description` TEXT,
+  `color` VARCHAR(7) DEFAULT '#6366f1',
+  `is_active` BOOLEAN DEFAULT TRUE,
+  `created_by` INT,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE SET NULL
+);
+
 -- Insert Users
 INSERT INTO `users` (`id`, `name`, `email`, `password_hash`, `role`, `avatar_url`, `team`, `job_title`, `start_date`, `onboarding_progress`) VALUES
 (1, 'Admin User', 'admin@example.com', 'password123', 'Admin', 'https://ui-avatars.com/api/?name=Admin+User&background=6366f1&color=fff', 'Management', 'Administrator', '2022-01-01', 100),
@@ -190,6 +203,15 @@ INSERT INTO `policies` (`title`, `category`, `summary`, `content`, `file_url`, `
 ('IT Security Policy', 'IT', 'Security requirements', 'All employees must use strong passwords and enable two-factor authentication.', '/policies/security-policy.pdf', 'security-policy.pdf', 'application/pdf', '3.0', '2024-01-01', 3, 1),
 ('Expense Reimbursement', 'Finance', 'Expense policy', 'Submit expenses within 30 days with proper receipts and documentation.', '/policies/expense-policy.docx', 'expense-policy.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', '1.2', '2024-01-01', 4, 1);
 
+-- Insert Task Categories
+INSERT INTO `task_categories` (`name`, `description`, `color`, `created_by`) VALUES
+('General', 'General onboarding tasks', '#6366f1', 1),
+('Paperwork', 'Document and form completion tasks', '#10b981', 1),
+('IT Setup', 'Technology and system setup tasks', '#f59e0b', 1),
+('Training', 'Learning and training related tasks', '#8b5cf6', 1),
+('HR', 'Human resources related tasks', '#ef4444', 1),
+('Compliance', 'Compliance and policy related tasks', '#06b6d4', 1);
+
 -- Insert Knowledge Base Articles
 INSERT INTO `knowledge_base_articles` (`title`, `category`, `tags`, `content`, `is_published`, `created_by`) VALUES
 ('How to Submit Expense Reports', 'Finance', '["expenses", "reimbursement", "finance"]', 'Step-by-step guide to submit expense reports through the portal...', TRUE, 1),
@@ -197,11 +219,28 @@ INSERT INTO `knowledge_base_articles` (`title`, `category`, `tags`, `content`, `
 ('Benefits Enrollment Guide', 'HR', '["benefits", "enrollment", "healthcare"]', 'Complete guide to enrolling in company benefits during onboarding...', TRUE, 8),
 ('Office Safety Procedures', 'Operations', '["safety", "emergency", "procedures"]', 'Emergency procedures and safety guidelines for office locations...', TRUE, 1);
 
+-- Insert Task Categories
+INSERT INTO `task_categories` (`name`, `description`, `color`, `created_by`) VALUES
+('General', 'General onboarding tasks', '#6366f1', 1),
+('Paperwork', 'Document and form completion tasks', '#10b981', 1),
+('IT Setup', 'Technology and system setup tasks', '#f59e0b', 1),
+('Training', 'Learning and training related tasks', '#8b5cf6', 1),
+('HR', 'Human resources related tasks', '#ef4444', 1),
+('Compliance', 'Compliance and policy related tasks', '#06b6d4', 1);
+
+-- Insert Tasks (unique set)
+INSERT INTO `tasks` (`user_id`, `title`, `category`, `due_date`, `status`) VALUES
+(6, 'Complete profile setup', 'General', '2024-01-15', 'InProgress'),
+(6, 'Upload required documents', 'Paperwork', '2024-01-16', 'ToDo'),
+(6, 'Set up development environment', 'IT Setup', '2024-01-20', 'ToDo'),
+(6, 'Complete security training', 'Training', '2024-01-22', 'ToDo'),
+(9, 'Complete profile setup', 'General', '2024-01-20', 'ToDo'),
+(9, 'Marketing tools training', 'Training', '2024-01-25', 'ToDo');
+
 -- Insert IT Assets
 INSERT INTO `it_assets` (`name`, `type`, `serial_number`, `status`, `purchase_date`, `warranty_info`, `assigned_to_id`, `assigned_date`) VALUES
 ('MacBook Pro 16', 'Hardware', 'C02F1234ABCD', 'Assigned', '2023-08-15', 'AppleCare+ until 2026-08-15', 6, '2024-01-01'),
-('Dell Latitude 7420', 'Hardware', 'DL7420-5678', 'Unassigned', '2023-03-10', 'Dell ProSupport until 2026-03-10', NULL, NULL),
-('iPhone 15', 'Hardware', 'IP15-001', 'Unassigned', '2024-01-15', 'Apple Warranty until 2026-01-15', NULL, NULL);
+('Dell Latitude 7420', 'Hardware', 'DL7420-5678', 'Unassigned', '2023-03-10', 'Dell ProSupport until 2026-03-10', NULL, NULL);
 
 INSERT INTO `it_assets` (`name`, `type`, `serial_number`, `status`, `license_expiry`, `assigned_to_id`, `assigned_date`) VALUES
 ('JetBrains License', 'Software', 'JB-USER-6', 'Assigned', '2024-12-31', 6, '2024-01-01'),
@@ -226,18 +265,6 @@ INSERT INTO `organization_settings` (`category`, `setting_key`, `setting_value`)
 ('email', 'smtp_password', '""'),
 ('email', 'from_email', '""'),
 ('email', 'from_name', '"Company Name"');
-
--- Insert Tasks
-INSERT INTO `tasks` (`user_id`, `title`, `category`, `due_date`, `status`) VALUES
-(6, 'Complete profile setup', 'General', '2024-01-15', 'InProgress'),
-(6, 'Upload required documents', 'Paperwork', '2024-01-16', 'ToDo'),
-(6, 'Set up development environment', 'IT Setup', '2024-01-20', 'ToDo'),
-(6, 'Complete security training', 'Training', '2024-01-22', 'ToDo'),
-(6, 'Schedule 1-on-1 with manager', 'Meetings', '2024-01-18', 'ToDo'),
-(9, 'Complete profile setup', 'General', '2024-01-20', 'ToDo'),
-(9, 'Upload required documents', 'Paperwork', '2024-01-21', 'ToDo'),
-(9, 'Marketing tools training', 'Training', '2024-01-25', 'ToDo'),
-(9, 'Meet the marketing team', 'Meetings', '2024-01-22', 'ToDo');
 
 -- Insert Training Modules
 INSERT INTO `training_modules` (`title`, `type`, `duration`, `thumbnail_url`) VALUES
