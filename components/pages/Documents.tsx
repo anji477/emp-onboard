@@ -1,5 +1,5 @@
 import React, { useState, useRef, useContext } from 'react';
-import { mockUserDocuments, mockCompanyDocuments } from '../../data/mockData';
+import { mockUserDocuments } from '../../data/mockData';
 import { UserDocument, DocumentStatus, UserRole } from '../../types';
 import Card from '../common/Card';
 import Icon from '../common/Icon';
@@ -61,6 +61,16 @@ const Documents: React.FC = () => {
     const [itemsPerPage] = useState(10);
     const [showUploadModal, setShowUploadModal] = useState(false);
     const [uploadingDocument, setUploadingDocument] = useState(false);
+    const [assignmentPriority, setAssignmentPriority] = useState('Medium');
+    const [assignmentDueDate, setAssignmentDueDate] = useState('');
+    const [assignmentCategory, setAssignmentCategory] = useState('General');
+    const [assignBy, setAssignBy] = useState('individual');
+    const [selectedDepartment, setSelectedDepartment] = useState('');
+    const [selectedRole, setSelectedRole] = useState('');
+    const [showTemplatesModal, setShowTemplatesModal] = useState(false);
+    const [templates, setTemplates] = useState<any[]>([]);
+    const [companyDocuments, setCompanyDocuments] = useState<any[]>([]);
+    const [categories, setCategories] = useState<any[]>([]);
     const auth = useContext(UserContext);
     
     const singleFileInputRef = useRef<HTMLInputElement>(null);
@@ -135,9 +145,13 @@ const Documents: React.FC = () => {
         if (auth?.user?.role === 'Admin' || auth?.user?.role === 'HR') {
             fetchAllUserDocuments();
             fetchUsers();
+            fetchTemplates();
+            fetchCompanyDocuments();
         } else {
             fetchUserDocuments();
+            fetchCompanyDocuments();
         }
+        fetchCategories();
     }, [auth?.user?.id, auth?.user?.role]);
 
     const handleSingleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -229,9 +243,24 @@ const Documents: React.FC = () => {
         }
     };
 
-    // Assign document to users
+    // Enhanced assign document to users
     const handleAssignDocument = async () => {
-        if (!newDocumentName.trim() || selectedUsers.length === 0) return;
+        if (!newDocumentName.trim()) return;
+        
+        if (assignBy === 'individual' && selectedUsers.length === 0) {
+            alert('Please select at least one user');
+            return;
+        }
+        
+        if (assignBy === 'department' && !selectedDepartment) {
+            alert('Please select a department');
+            return;
+        }
+        
+        if (assignBy === 'role' && !selectedRole) {
+            alert('Please select a role');
+            return;
+        }
         
         try {
             const response = await fetch('/api/documents/assign', {
@@ -240,18 +269,73 @@ const Documents: React.FC = () => {
                 credentials: 'include',
                 body: JSON.stringify({
                     documentName: newDocumentName.trim(),
-                    userIds: selectedUsers
+                    userIds: assignBy === 'individual' ? selectedUsers : undefined,
+                    priority: assignmentPriority,
+                    dueDate: assignmentDueDate,
+                    category: assignmentCategory,
+                    assignBy,
+                    department: selectedDepartment,
+                    role: selectedRole
                 })
             });
             
             if (response.ok) {
+                const result = await response.json();
+                alert(result.message);
                 setShowAssignModal(false);
-                setNewDocumentName('');
-                setSelectedUsers([]);
+                resetAssignmentForm();
                 fetchAllUserDocuments();
             }
         } catch (error) {
             console.error('Error assigning document:', error);
+        }
+    };
+    
+    const resetAssignmentForm = () => {
+        setNewDocumentName('');
+        setSelectedUsers([]);
+        setAssignmentPriority('Medium');
+        setAssignmentDueDate('');
+        setAssignmentCategory('General');
+        setAssignBy('individual');
+        setSelectedDepartment('');
+        setSelectedRole('');
+    };
+    
+    // Fetch templates and company documents
+    const fetchTemplates = async () => {
+        try {
+            const response = await fetch('/api/documents/templates', { credentials: 'include' });
+            if (response.ok) {
+                const data = await response.json();
+                setTemplates(data);
+            }
+        } catch (error) {
+            console.error('Error fetching templates:', error);
+        }
+    };
+    
+    const fetchCompanyDocuments = async () => {
+        try {
+            const response = await fetch('/api/documents/company', { credentials: 'include' });
+            if (response.ok) {
+                const data = await response.json();
+                setCompanyDocuments(data);
+            }
+        } catch (error) {
+            console.error('Error fetching company documents:', error);
+        }
+    };
+    
+    const fetchCategories = async () => {
+        try {
+            const response = await fetch('/api/documents/categories', { credentials: 'include' });
+            if (response.ok) {
+                const data = await response.json();
+                setCategories(data);
+            }
+        } catch (error) {
+            console.error('Error fetching categories:', error);
         }
     };
 
@@ -763,7 +847,7 @@ const Documents: React.FC = () => {
                                     </div>
                                 </button>
                                 <button 
-                                    onClick={() => alert('Document templates feature coming soon! Contact HR for specific forms.')}
+                                    onClick={() => setShowTemplatesModal(true)}
                                     className="w-full flex items-center p-3 text-left bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors group"
                                 >
                                     <div className="flex items-center justify-center w-10 h-10 bg-purple-100 rounded-lg mr-3 group-hover:bg-purple-200">
@@ -771,7 +855,7 @@ const Documents: React.FC = () => {
                                     </div>
                                     <div>
                                         <p className="font-medium text-gray-800">Document Templates</p>
-                                        <p className="text-sm text-gray-500">Download required forms</p>
+                                        <p className="text-sm text-gray-500">Download required forms ({templates.length} available)</p>
                                     </div>
                                 </button>
                             </div>
@@ -820,6 +904,36 @@ const Documents: React.FC = () => {
                             </div>
                         </Card>
                     </div>
+                    
+                    {/* Company Documents */}
+                    <Card>
+                        <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-4">Company Resources</h2>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">Important company documents and resources for your reference.</p>
+                        {companyDocuments.length === 0 ? (
+                            <div className="text-center py-8">
+                                <Icon name="document-text" className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                                <p className="text-gray-500">No company documents available yet.</p>
+                            </div>
+                        ) : (
+                            <div className="grid md:grid-cols-2 gap-4">
+                                {companyDocuments.map(doc => (
+                                    <a key={doc.id} href={doc.file_url} target="_blank" rel="noopener noreferrer" className="flex items-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors group">
+                                        <div className="flex items-center justify-center w-12 h-12 bg-indigo-100 rounded-lg mr-4 group-hover:bg-indigo-200 transition-colors">
+                                            <Icon name="document-text" className="h-6 w-6 text-indigo-600" />
+                                        </div>
+                                        <div className="flex-1">
+                                            <p className="font-medium text-gray-800 dark:text-gray-200 group-hover:text-indigo-600 transition-colors">{doc.name}</p>
+                                            <p className="text-sm text-gray-500 dark:text-gray-400">{doc.category} • v{doc.version}</p>
+                                            {doc.description && (
+                                                <p className="text-xs text-gray-400 mt-1">{doc.description}</p>
+                                            )}
+                                        </div>
+                                        <Icon name="external-link" className="h-5 w-5 text-gray-400 group-hover:text-indigo-500 transition-colors" />
+                                    </a>
+                                ))}
+                            </div>
+                        )}
+                    </Card>
                 </>
             )}
 
@@ -848,10 +962,10 @@ const Documents: React.FC = () => {
                 </Modal>
             )}
 
-            {/* Assign Document Modal */}
+            {/* Enhanced Assign Document Modal */}
             {showAssignModal && (
-                <Modal isOpen={showAssignModal} onClose={() => setShowAssignModal(false)} title="Assign Document">
-                    <div className="space-y-4">
+                <Modal isOpen={showAssignModal} onClose={() => { setShowAssignModal(false); resetAssignmentForm(); }} title="Assign Document">
+                    <div className="space-y-4 max-h-96 overflow-y-auto">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Document Name</label>
                             <input
@@ -862,12 +976,17 @@ const Documents: React.FC = () => {
                                 placeholder="e.g., ID Card, Resume, Tax Forms"
                             />
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        
+                        <div className="grid grid-cols-3 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
-                                <select className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                                    <option value="Medium">Medium</option>
+                                <select 
+                                    value={assignmentPriority}
+                                    onChange={(e) => setAssignmentPriority(e.target.value)}
+                                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                >
                                     <option value="Low">Low</option>
+                                    <option value="Medium">Medium</option>
                                     <option value="High">High</option>
                                     <option value="Critical">Critical</option>
                                 </select>
@@ -876,53 +995,170 @@ const Documents: React.FC = () => {
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
                                 <input
                                     type="date"
+                                    value={assignmentDueDate}
+                                    onChange={(e) => setAssignmentDueDate(e.target.value)}
                                     className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                                 />
                             </div>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                            <select className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                                <option value="Onboarding">Onboarding</option>
-                                <option value="Compliance">Compliance</option>
-                                <option value="Personal">Personal Documents</option>
-                                <option value="Legal">Legal</option>
-                                <option value="Training">Training</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Assign to Users</label>
-                            <div className="max-h-48 overflow-y-auto border rounded-md p-2">
-                                {users.map(user => (
-                                    <label key={user.id} className="flex items-center p-2 hover:bg-gray-50">
-                                        <input
-                                            type="checkbox"
-                                            checked={selectedUsers.includes(user.id.toString())}
-                                            onChange={(e) => {
-                                                if (e.target.checked) {
-                                                    setSelectedUsers([...selectedUsers, user.id.toString()]);
-                                                } else {
-                                                    setSelectedUsers(selectedUsers.filter(id => id !== user.id.toString()));
-                                                }
-                                            }}
-                                            className="mr-2"
-                                        />
-                                        <div>
-                                            <div className="text-sm font-medium">{user.name}</div>
-                                            <div className="text-xs text-gray-500">{user.email}</div>
-                                        </div>
-                                    </label>
-                                ))}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                                <select 
+                                    value={assignmentCategory}
+                                    onChange={(e) => setAssignmentCategory(e.target.value)}
+                                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                >
+                                    {categories.map(cat => (
+                                        <option key={cat.id} value={cat.name}>{cat.name}</option>
+                                    ))}
+                                </select>
                             </div>
                         </div>
+                        
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Assignment Method</label>
+                            <div className="flex gap-4 mb-3">
+                                <label className="flex items-center">
+                                    <input
+                                        type="radio"
+                                        value="individual"
+                                        checked={assignBy === 'individual'}
+                                        onChange={(e) => setAssignBy(e.target.value)}
+                                        className="mr-2"
+                                    />
+                                    Individual Users
+                                </label>
+                                <label className="flex items-center">
+                                    <input
+                                        type="radio"
+                                        value="department"
+                                        checked={assignBy === 'department'}
+                                        onChange={(e) => setAssignBy(e.target.value)}
+                                        className="mr-2"
+                                    />
+                                    By Department
+                                </label>
+                                <label className="flex items-center">
+                                    <input
+                                        type="radio"
+                                        value="role"
+                                        checked={assignBy === 'role'}
+                                        onChange={(e) => setAssignBy(e.target.value)}
+                                        className="mr-2"
+                                    />
+                                    By Role
+                                </label>
+                            </div>
+                        </div>
+                        
+                        {assignBy === 'individual' && (
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Select Users</label>
+                                <div className="max-h-40 overflow-y-auto border rounded-md p-2">
+                                    {users.map(user => (
+                                        <label key={user.id} className="flex items-center p-2 hover:bg-gray-50">
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedUsers.includes(user.id.toString())}
+                                                onChange={(e) => {
+                                                    if (e.target.checked) {
+                                                        setSelectedUsers([...selectedUsers, user.id.toString()]);
+                                                    } else {
+                                                        setSelectedUsers(selectedUsers.filter(id => id !== user.id.toString()));
+                                                    }
+                                                }}
+                                                className="mr-2"
+                                            />
+                                            <div>
+                                                <div className="text-sm font-medium">{user.name}</div>
+                                                <div className="text-xs text-gray-500">{user.email} • {user.role}</div>
+                                            </div>
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                        
+                        {assignBy === 'department' && (
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Select Department</label>
+                                <select 
+                                    value={selectedDepartment}
+                                    onChange={(e) => setSelectedDepartment(e.target.value)}
+                                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                >
+                                    <option value="">Choose Department</option>
+                                    {[...new Set(users.map(u => u.team).filter(Boolean))].map(dept => (
+                                        <option key={dept} value={dept}>{dept}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+                        
+                        {assignBy === 'role' && (
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Select Role</label>
+                                <select 
+                                    value={selectedRole}
+                                    onChange={(e) => setSelectedRole(e.target.value)}
+                                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                >
+                                    <option value="">Choose Role</option>
+                                    <option value="Employee">Employee</option>
+                                    <option value="Manager">Manager</option>
+                                    <option value="HR">HR</option>
+                                    <option value="Admin">Admin</option>
+                                    <option value="IT">IT</option>
+                                </select>
+                            </div>
+                        )}
+                        
                         <div className="flex justify-end gap-2 pt-4 border-t">
-                            <Button variant="secondary" onClick={() => setShowAssignModal(false)}>Cancel</Button>
+                            <Button variant="secondary" onClick={() => { setShowAssignModal(false); resetAssignmentForm(); }}>Cancel</Button>
                             <Button 
                                 onClick={handleAssignDocument} 
-                                disabled={!newDocumentName.trim() || selectedUsers.length === 0}
+                                disabled={!newDocumentName.trim()}
                             >
                                 Assign Document
                             </Button>
+                        </div>
+                    </div>
+                </Modal>
+            )}
+
+            {/* Document Templates Modal */}
+            {showTemplatesModal && (
+                <Modal isOpen={showTemplatesModal} onClose={() => setShowTemplatesModal(false)} title="Document Templates">
+                    <div className="space-y-4 max-h-96 overflow-y-auto">
+                        {templates.length === 0 ? (
+                            <div className="text-center py-8">
+                                <Icon name="document-duplicate" className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                                <p className="text-gray-500">No templates available yet.</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                {templates.map(template => (
+                                    <div key={template.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50">
+                                        <div className="flex-1">
+                                            <h4 className="font-medium text-gray-800">{template.name}</h4>
+                                            <p className="text-sm text-gray-500">{template.category} • {template.priority} Priority</p>
+                                            {template.description && (
+                                                <p className="text-xs text-gray-400 mt-1">{template.description}</p>
+                                            )}
+                                        </div>
+                                        {template.file_url && (
+                                            <a href={template.file_url} target="_blank" rel="noopener noreferrer">
+                                                <Button size="sm" variant="secondary">
+                                                    <Icon name="arrow-down-tray" className="w-4 h-4 mr-1" />
+                                                    Download
+                                                </Button>
+                                            </a>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                        <div className="flex justify-end pt-4 border-t">
+                            <Button variant="secondary" onClick={() => setShowTemplatesModal(false)}>Close</Button>
                         </div>
                     </div>
                 </Modal>

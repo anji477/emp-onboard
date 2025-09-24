@@ -1057,9 +1057,84 @@ app.get('/api/init-settings', async (req, res) => {
   }
 });
 
-// Initialize database tables
+// Initialize database tables - Enhanced
 app.get('/api/init-db', async (req, res) => {
   try {
+    // Drop and recreate user_documents table
+    await db.execute('DROP TABLE IF EXISTS user_documents');
+    await db.execute(`
+      CREATE TABLE user_documents (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        name VARCHAR(255) NOT NULL,
+        status ENUM('Pending', 'Uploaded', 'In Review', 'Verified', 'Rejected', 'Overdue', 'Expired') DEFAULT 'Pending',
+        file_url VARCHAR(500),
+        file_name VARCHAR(255),
+        file_size BIGINT,
+        file_type VARCHAR(100),
+        uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        action_date DATE,
+        rejection_reason TEXT,
+        priority ENUM('Low', 'Medium', 'High', 'Critical') DEFAULT 'Medium',
+        category VARCHAR(50) DEFAULT 'General',
+        due_date DATE,
+        assigned_by INT,
+        assigned_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        INDEX idx_user_id (user_id),
+        INDEX idx_status (status),
+        INDEX idx_category (category),
+        INDEX idx_due_date (due_date),
+        INDEX idx_priority (priority),
+        UNIQUE KEY unique_user_document (user_id, name)
+      )
+    `);
+    
+    // Drop and recreate company_documents table
+    await db.execute('DROP TABLE IF EXISTS company_documents');
+    await db.execute(`
+      CREATE TABLE company_documents (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        description TEXT,
+        category VARCHAR(50) DEFAULT 'General',
+        file_url VARCHAR(500),
+        file_name VARCHAR(255),
+        file_size BIGINT,
+        version VARCHAR(20) DEFAULT '1.0',
+        is_active BOOLEAN DEFAULT TRUE,
+        uploaded_by INT,
+        uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_category (category),
+        INDEX idx_active (is_active)
+      )
+    `);
+    
+    // Drop and recreate document_templates table
+    await db.execute('DROP TABLE IF EXISTS document_templates');
+    await db.execute(`
+      CREATE TABLE document_templates (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        description TEXT,
+        category VARCHAR(50) DEFAULT 'General',
+        priority ENUM('Low', 'Medium', 'High', 'Critical') DEFAULT 'Medium',
+        due_in_days INT,
+        is_required BOOLEAN DEFAULT TRUE,
+        is_active BOOLEAN DEFAULT TRUE,
+        file_url VARCHAR(500),
+        file_name VARCHAR(255),
+        file_size BIGINT,
+        version VARCHAR(20) DEFAULT '1.0',
+        created_by INT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_category (category),
+        INDEX idx_active (is_active)
+      )
+    `);
+    
     // Create task_categories table
     await db.execute(`
       CREATE TABLE IF NOT EXISTS task_categories (
@@ -1070,12 +1145,29 @@ app.get('/api/init-db', async (req, res) => {
         is_active BOOLEAN DEFAULT TRUE,
         created_by INT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       )
     `);
     
-    // Insert default task categories if they don't exist
+    // Create document_history table
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS document_history (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        document_id INT NOT NULL,
+        user_id INT NOT NULL,
+        action VARCHAR(50) NOT NULL,
+        old_status VARCHAR(50),
+        new_status VARCHAR(50),
+        notes TEXT,
+        created_by INT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_document_user (document_id, user_id),
+        INDEX idx_action (action),
+        INDEX idx_created_at (created_at)
+      )
+    `);
+    
+    // Insert default task categories
     const defaultCategories = [
       ['General', 'General onboarding tasks', '#6366f1'],
       ['Paperwork', 'Document and form completion tasks', '#10b981'],
@@ -1092,7 +1184,22 @@ app.get('/api/init-db', async (req, res) => {
       );
     }
     
-    res.json({ message: 'Database initialized successfully' });
+    // Insert sample company documents
+    const sampleDocs = [
+      ['Employee Handbook', 'Complete guide for new employees', 'Onboarding'],
+      ['Code of Conduct', 'Company policies and ethical guidelines', 'Compliance'],
+      ['Safety Manual', 'Workplace safety procedures', 'Compliance'],
+      ['Benefits Guide', 'Employee benefits and perks', 'General']
+    ];
+    
+    for (const [name, description, category] of sampleDocs) {
+      await db.execute(
+        'INSERT IGNORE INTO company_documents (name, description, category, uploaded_by) VALUES (?, ?, ?, ?)',
+        [name, description, category, 1]
+      );
+    }
+    
+    res.json({ message: 'Database tables recreated successfully' });
   } catch (error) {
     console.error('Error initializing database:', error);
     res.status(500).json({ message: 'Failed to initialize database' });
@@ -1398,26 +1505,62 @@ app.get('/api/documents/analytics', verifyToken, requireRole(['Admin', 'HR']), a
   }
 });
 
-// Assign document to users (HR/Admin only)
+// Assign document to users (HR/Admin only) - Enhanced
 app.post('/api/documents/assign', verifyToken, requireRole(['Admin', 'HR']), async (req, res) => {
   try {
-    const { documentName, userIds } = req.body;
+    const { documentName, userIds, priority, dueDate, category, assignBy, department, role, team } = req.body;
     
-    if (!documentName || !userIds || userIds.length === 0) {
-      return res.status(400).json({ error: 'Document name and user IDs are required' });
+    if (!documentName) {
+      return res.status(400).json({ error: 'Document name is required' });
+    }
+    
+    let targetUserIds = userIds || [];
+    
+    // Bulk assignment by criteria
+    if (assignBy && assignBy !== 'individual') {
+      let query = 'SELECT id FROM users WHERE 1=1';
+      let params = [];
+      
+      if (assignBy === 'department' && department) {
+        query += ' AND team = ?';
+        params.push(department);
+      } else if (assignBy === 'role' && role) {
+        query += ' AND role = ?';
+        params.push(role);
+      } else if (assignBy === 'team' && team) {
+        query += ' AND team = ?';
+        params.push(team);
+      }
+      
+      const [users] = await db.execute(query, params);
+      targetUserIds = users.map(user => user.id);
+    }
+    
+    if (targetUserIds.length === 0) {
+      return res.status(400).json({ error: 'No users selected for assignment' });
+    }
+    
+    // Calculate due date if not provided
+    let calculatedDueDate = dueDate;
+    if (!calculatedDueDate && priority) {
+      const daysMap = { 'Critical': 3, 'High': 7, 'Medium': 14, 'Low': 30 };
+      const days = daysMap[priority] || 14;
+      const due = new Date();
+      due.setDate(due.getDate() + days);
+      calculatedDueDate = due.toISOString().split('T')[0];
     }
     
     // Insert document requirement for each user
-    for (const userId of userIds) {
+    for (const userId of targetUserIds) {
       if (userId) {
         await db.execute(
-          'INSERT INTO user_documents (user_id, name, status) VALUES (?, ?, "Pending") ON DUPLICATE KEY UPDATE status = "Pending"',
-          [userId, documentName]
+          'INSERT INTO user_documents (user_id, name, status, priority, due_date, category, assigned_by, assigned_date) VALUES (?, ?, "Pending", ?, ?, ?, ?, NOW()) ON DUPLICATE KEY UPDATE status = "Pending", priority = VALUES(priority), due_date = VALUES(due_date), category = VALUES(category)',
+          [userId, documentName, priority || 'Medium', calculatedDueDate, category || 'General', req.user.id]
         );
       }
     }
     
-    res.json({ message: 'Document assigned successfully' });
+    res.json({ message: `Document assigned to ${targetUserIds.length} users successfully` });
   } catch (error) {
     console.error('Error assigning document:', error);
     res.status(500).json({ error: 'Failed to assign document' });
@@ -1446,14 +1589,101 @@ app.post('/api/documents/templates', verifyToken, requireRole(['Admin', 'HR']), 
   }
 });
 
-// Get document templates (HR/Admin only)
+// Get document templates (HR/Admin only) - Enhanced
 app.get('/api/documents/templates', verifyToken, requireRole(['Admin', 'HR']), async (req, res) => {
   try {
-    const [templates] = await db.execute('SELECT * FROM document_templates WHERE is_active = TRUE ORDER BY name');
+    const [templates] = await db.execute(`
+      SELECT dt.*, u.name as created_by_name 
+      FROM document_templates dt 
+      LEFT JOIN users u ON dt.created_by = u.id 
+      WHERE dt.is_active = TRUE 
+      ORDER BY dt.category, dt.name
+    `);
     res.json(templates);
   } catch (error) {
     console.error('Error fetching templates:', error);
     res.status(500).json({ error: 'Failed to fetch templates' });
+  }
+});
+
+// Upload document template (HR/Admin only)
+app.post('/api/documents/templates/upload', verifyToken, requireRole(['Admin', 'HR']), upload.single('templateFile'), async (req, res) => {
+  try {
+    const { name, description, category, priority, dueInDays, isRequired } = req.body;
+    
+    if (!req.file || !name) {
+      return res.status(400).json({ error: 'File and name are required' });
+    }
+    
+    const fileUrl = `/uploads/${req.file.filename}`;
+    
+    const [result] = await db.execute(
+      'INSERT INTO document_templates (name, description, category, priority, due_in_days, is_required, file_url, file_name, file_size, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [name, description || '', category || 'General', priority || 'Medium', dueInDays || null, isRequired === 'true', fileUrl, req.file.originalname, req.file.size, req.user.id]
+    );
+    
+    res.json({ success: true, templateId: result.insertId });
+  } catch (error) {
+    console.error('Error uploading template:', error);
+    res.status(500).json({ error: 'Failed to upload template' });
+  }
+});
+
+// Get company documents
+app.get('/api/documents/company', verifyToken, async (req, res) => {
+  try {
+    const [documents] = await db.execute(`
+      SELECT cd.*, u.name as uploaded_by_name 
+      FROM company_documents cd 
+      LEFT JOIN users u ON cd.uploaded_by = u.id 
+      WHERE cd.is_active = TRUE 
+      ORDER BY cd.category, cd.name
+    `);
+    res.json(documents);
+  } catch (error) {
+    console.error('Error fetching company documents:', error);
+    res.status(500).json({ error: 'Failed to fetch company documents' });
+  }
+});
+
+// Upload company document (HR/Admin only)
+app.post('/api/documents/company/upload', verifyToken, requireRole(['Admin', 'HR']), upload.single('companyFile'), async (req, res) => {
+  try {
+    const { name, description, category, version } = req.body;
+    
+    if (!req.file || !name) {
+      return res.status(400).json({ error: 'File and name are required' });
+    }
+    
+    const fileUrl = `/uploads/${req.file.filename}`;
+    
+    const [result] = await db.execute(
+      'INSERT INTO company_documents (name, description, category, file_url, file_name, file_size, version, uploaded_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [name, description || '', category || 'General', fileUrl, req.file.originalname, req.file.size, version || '1.0', req.user.id]
+    );
+    
+    res.json({ success: true, documentId: result.insertId });
+  } catch (error) {
+    console.error('Error uploading company document:', error);
+    res.status(500).json({ error: 'Failed to upload company document' });
+  }
+});
+
+// Get document categories
+app.get('/api/documents/categories', verifyToken, async (req, res) => {
+  try {
+    const categories = [
+      { id: 'onboarding', name: 'Onboarding', description: 'New employee documents', color: '#3b82f6' },
+      { id: 'compliance', name: 'Compliance', description: 'Legal and regulatory documents', color: '#ef4444' },
+      { id: 'personal', name: 'Personal', description: 'Personal information documents', color: '#10b981' },
+      { id: 'legal', name: 'Legal', description: 'Legal agreements and contracts', color: '#8b5cf6' },
+      { id: 'training', name: 'Training', description: 'Training and certification documents', color: '#f59e0b' },
+      { id: 'general', name: 'General', description: 'General purpose documents', color: '#6b7280' }
+    ];
+    res.json(categories);
+  } catch (error) {
+    console.error('Error fetching categories:', error);
+    res.status(500).json({ error: 'Failed to fetch categories' });
   }
 });
 

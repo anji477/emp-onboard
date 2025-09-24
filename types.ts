@@ -68,6 +68,9 @@ export interface UserDocument {
   fileSize?: number;
   uploadedAt?: string;
   priority?: 'Low' | 'Medium' | 'High' | 'Critical';
+  category?: string;
+  dueDate?: string;
+  isOverdue?: boolean;
 }
 
 export interface DocumentTemplate {
@@ -78,6 +81,25 @@ export interface DocumentTemplate {
   isRequired: boolean;
   priority: 'Low' | 'Medium' | 'High' | 'Critical';
   dueInDays?: number;
+  fileUrl?: string;
+  fileName?: string;
+  createdBy?: string;
+  createdAt?: string;
+}
+
+export interface BulkAssignmentCriteria {
+  assignBy: 'individual' | 'department' | 'role' | 'team';
+  department?: string;
+  role?: UserRole;
+  team?: string;
+  userIds?: string[];
+}
+
+export interface DocumentCategory {
+  id: string;
+  name: string;
+  description: string;
+  color: string;
 }
 
 export interface DocumentStats {
@@ -94,6 +116,12 @@ export interface CompanyDocument {
   name: string;
   category: string;
   url: string;
+  description?: string;
+  fileSize?: number;
+  uploadedBy?: string;
+  uploadedAt?: string;
+  version?: string;
+  isActive?: boolean;
 }
 
 export interface DocumentFilter {
