@@ -160,7 +160,7 @@ INSERT INTO `organization_settings` (`id`, `setting_key`, `setting_value`, `cate
 (9, 'backup_settings', '{\"autoBackup\":true,\"frequency\":\"daily\",\"retentionDays\":30,\"location\":\"cloud\",\"encryption\":true}', 'system', NULL, 9, '2025-09-24 13:16:55', '2025-09-22 08:22:02'),
 (10, 'maintenance_mode', '{\"enabled\":true,\"message\":\"System under maintenance\",\"allowedRoles\":[\"Admin\"]}', 'system', NULL, 9, '2025-09-24 13:16:55', '2025-09-22 08:22:02'),
 (11, 'integration_settings', '{\"sso\":{\"enabled\":false,\"provider\":\"none\",\"domain\":\"\"},\"slack\":{\"enabled\":false,\"webhook\":\"\"},\"teams\":{\"enabled\":false,\"webhook\":\"\"}}', 'integrations', NULL, 9, '2025-09-24 13:16:55', '2025-09-22 08:22:02'),
-(33, 'email_settings', '{\"smtp_host\":\"email-smtp.eu-west-1.amazonaws.com\",\"smtp_port\":587,\"smtp_user\":\"AKIAQHC5GV6YUGRV7G6A\",\"smtp_password\":\"BH8bi78DVX3pkpAAgPr1YdMrQSs4yZzh2TlbZgzN9rpV\",\"from_email\":\"jahith.hussain@mydigitalaccounts.com\",\"from_name\":\"Onboardly\"}', 'system', NULL, 9, '2025-09-24 13:16:55', '2025-09-22 11:47:28');
+(33, 'email_settings', '{\"smtp_host\":\"email-smtp.eu-west-1.amazonaws.com\",\"smtp_port\":587,\"smtp_user\":\"xxxxxxxxxxxx\",\"smtp_password\":\"xxxxxxxxxxxx\",\"from_email\":\"jxxxxxxxxxx\",\"from_name\":\"Onboardly\"}', 'system', NULL, 9, '2025-09-24 13:16:55', '2025-09-22 11:47:28');
 
 -- --------------------------------------------------------
 
