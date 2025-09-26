@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost
--- Generation Time: Sep 24, 2025 at 01:25 PM
+-- Generation Time: Sep 26, 2025 at 07:57 AM
 -- Server version: 8.0.29
 -- PHP Version: 8.2.1
 
@@ -111,6 +111,47 @@ INSERT INTO `it_assets` (`id`, `name`, `type`, `serial_number`, `status`, `purch
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `mfa_audit_log`
+--
+
+CREATE TABLE `mfa_audit_log` (
+  `id` int NOT NULL,
+  `user_id` int NOT NULL,
+  `action` enum('setup','verify_success','verify_fail','disable','backup_code_used') COLLATE utf8_unicode_ci NOT NULL,
+  `method` enum('authenticator','email','backup_code') COLLATE utf8_unicode_ci NOT NULL,
+  `ip_address` varchar(45) COLLATE utf8_unicode_ci DEFAULT NULL,
+  `user_agent` text COLLATE utf8_unicode_ci,
+  `details` json DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8_unicode_ci;
+
+--
+-- Dumping data for table `mfa_audit_log`
+--
+
+INSERT INTO `mfa_audit_log` (`id`, `user_id`, `action`, `method`, `ip_address`, `user_agent`, `details`, `created_at`) VALUES
+(1, 1, 'setup', 'authenticator', '192.168.1.140', NULL, '{\"action\": \"session_restart\", \"old_token\": \"provided\"}', '2025-09-25 13:50:34'),
+(2, 1, 'setup', 'authenticator', '192.168.1.140', NULL, '{\"action\": \"session_restart\", \"old_token\": \"provided\"}', '2025-09-25 13:50:39'),
+(3, 1, 'setup', 'authenticator', '192.168.1.140', NULL, '{\"action\": \"session_restart\", \"old_token\": \"provided\"}', '2025-09-25 14:05:24');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `mfa_sessions`
+--
+
+CREATE TABLE `mfa_sessions` (
+  `id` int NOT NULL,
+  `user_id` int NOT NULL,
+  `session_token` varchar(64) COLLATE utf8_unicode_ci NOT NULL,
+  `secret` varchar(32) COLLATE utf8_unicode_ci DEFAULT NULL,
+  `expires_at` datetime NOT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `notifications`
 --
 
@@ -153,14 +194,15 @@ CREATE TABLE `organization_settings` (
 --
 
 INSERT INTO `organization_settings` (`id`, `setting_key`, `setting_value`, `category`, `description`, `updated_by`, `updated_at`, `created_at`) VALUES
-(1, 'company_info', '{\"name\":\"MyDigitalAccounts\",\"logo\":\"\",\"primaryColor\":\"#0306b0\",\"secondaryColor\":\"#3e5fa3\",\"darkMode\":false}', 'company', 'Company branding and identity', 9, '2025-09-23 07:48:18', '2025-09-18 08:33:42'),
+(1, 'company_info', '{\"logo\":\"https://ui-avatars.com/api/?name=MyDigitalAccounts&background=0306b0&color=fff&size=128&rounded=true&bold=true\",\"name\":\"MyDigitalAccounts\",\"darkMode\":false,\"primaryColor\":\"#0306b0\",\"secondaryColor\":\"#3e5fa3\"}', 'company', 'Company branding and identity', 9, '2025-09-24 14:06:52', '2025-09-18 08:33:42'),
 (2, 'working_hours', '{\"startTime\":\"09:00\",\"endTime\":\"17:00\",\"timezone\":\"UTC\",\"workingDays\":[\"Monday\",\"Tuesday\",\"Wednesday\",\"Thursday\",\"Friday\"]}', 'policies', 'Default working hours', 9, '2025-09-23 07:48:18', '2025-09-18 08:33:42'),
 (3, 'password_policy', '{\"minLength\":8,\"requireUppercase\":true,\"requireNumbers\":true,\"expiryDays\":90,\"requireSymbols\":true}', 'security', 'Password requirements', 9, '2025-09-23 07:48:18', '2025-09-18 08:33:42'),
 (4, 'notification_preferences', '{\"email\":{\"enabled\":true,\"onboarding\":true,\"taskReminders\":true},\"sms\":{\"enabled\":false}}', 'notifications', 'Notification settings', 9, '2025-09-23 07:48:18', '2025-09-18 08:33:42'),
 (9, 'backup_settings', '{\"autoBackup\":true,\"frequency\":\"daily\",\"retentionDays\":30,\"location\":\"cloud\",\"encryption\":true}', 'system', NULL, 9, '2025-09-24 13:16:55', '2025-09-22 08:22:02'),
 (10, 'maintenance_mode', '{\"enabled\":true,\"message\":\"System under maintenance\",\"allowedRoles\":[\"Admin\"]}', 'system', NULL, 9, '2025-09-24 13:16:55', '2025-09-22 08:22:02'),
 (11, 'integration_settings', '{\"sso\":{\"enabled\":false,\"provider\":\"none\",\"domain\":\"\"},\"slack\":{\"enabled\":false,\"webhook\":\"\"},\"teams\":{\"enabled\":false,\"webhook\":\"\"}}', 'integrations', NULL, 9, '2025-09-24 13:16:55', '2025-09-22 08:22:02'),
-(33, 'email_settings', '{\"smtp_host\":\"email-smtp.eu-west-1.amazonaws.com\",\"smtp_port\":587,\"smtp_user\":\"xxxxxxxxxxxx\",\"smtp_password\":\"xxxxxxxxxxxx\",\"from_email\":\"jxxxxxxxxxx\",\"from_name\":\"Onboardly\"}', 'system', NULL, 9, '2025-09-24 13:16:55', '2025-09-22 11:47:28');
+(33, 'email_settings', '{\"smtp_host\":\"email-smtp.eu-west-1.amazonaws.com\",\"smtp_port\":587,\"smtp_user\":\"\",\"smtp_password\":\"+Sggyqv\",\"from_email\":\"jahith.hussain@mydigitalaccounts.com\",\"from_name\":\"Onboardly\"}', 'system', NULL, 9, '2025-09-24 13:46:45', '2025-09-22 11:47:28'),
+(77, 'mfa_policy', '{\"enforced\":false,\"require_for_roles\":[\"\"],\"grace_period_days\":7}', 'security', 'Multi-factor authentication policy settings', 9, '2025-09-26 07:33:39', '2025-09-24 14:13:27');
 
 -- --------------------------------------------------------
 
@@ -291,6 +333,23 @@ INSERT INTO `training_modules` (`id`, `title`, `type`, `duration`, `thumbnail_ur
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `trusted_devices`
+--
+
+CREATE TABLE `trusted_devices` (
+  `id` int NOT NULL,
+  `user_id` int NOT NULL,
+  `device_fingerprint` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
+  `device_name` varchar(255) COLLATE utf8_unicode_ci DEFAULT NULL,
+  `ip_address` varchar(45) COLLATE utf8_unicode_ci DEFAULT NULL,
+  `user_agent` text COLLATE utf8_unicode_ci,
+  `expires_at` timestamp NOT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `users`
 --
 
@@ -305,6 +364,11 @@ CREATE TABLE `users` (
   `job_title` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `start_date` date DEFAULT NULL,
   `onboarding_progress` int DEFAULT '0',
+  `mfa_enabled` tinyint(1) DEFAULT '0',
+  `mfa_secret` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `mfa_backup_codes` json DEFAULT NULL,
+  `mfa_setup_completed` tinyint(1) DEFAULT '0',
+  `email_otp_enabled` tinyint(1) DEFAULT '0',
   `manager_id` int DEFAULT NULL,
   `buddy_id` int DEFAULT NULL,
   `invitation_token` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
@@ -317,13 +381,12 @@ CREATE TABLE `users` (
 -- Dumping data for table `users`
 --
 
-INSERT INTO `users` (`id`, `name`, `email`, `password_hash`, `role`, `avatar_url`, `team`, `job_title`, `start_date`, `onboarding_progress`, `manager_id`, `buddy_id`, `invitation_token`, `invitation_expires`, `reset_token`, `reset_expires`) VALUES
-(1, 'Admin User', 'admin@example.com', '$2b$12$Ll7fnC5/XG0bTeF3h1QjsOe.qIcPnO82HA4HypFEFV9Ue0/ZX/hI2', 'Admin', 'https://ui-avatars.com/api/?name=Admin+User&background=6366f1&color=fff', 'Management', 'Administrator', '2022-01-01', 53, NULL, NULL, NULL, NULL, NULL, NULL),
-(6, 'Alex Doe', 'user@example.com', '$2b$12$Kv26zvuQdk5ktZaln6JjIesW8VcBvG1H2Qdppw9wpNIh8CNB8oMrq', 'Employee', 'https://ui-avatars.com/api/?name=Alex+Doe&background=6366f1&color=fff', 'Engineering', 'Developer', '2024-01-01', 83, NULL, NULL, NULL, NULL, NULL, NULL),
-(8, 'HR Manager', 'hr@example.com', '$2b$12$QM3JmAOjVDMDBSvWOPYxvec0jRgBdFYIO0xiZADGGnroVaJ1p0jMe', 'HR', 'https://ui-avatars.com/api/?name=HR+Manager&background=6366f1&color=fff', 'Human Resources', 'HR Manager', '2022-01-01', 0, NULL, NULL, NULL, NULL, NULL, NULL),
-(9, 'Anji Reddy', 'anji.reddy@mydigitalaccounts.com', '$2b$12$DVrMee1e.9RX9gpg.usBUOGZObBkQ/oEAMyW4uN7G0KwD52SCLq/C', 'Employee', 'https://ui-avatars.com/api/?name=Anji%20Reddy&background=6366f1&color=fff', 'IT', 'Network and DevOps Manager', '2025-09-18', 43, NULL, NULL, NULL, NULL, '4szt3hl0x6nmfv7wdy7', '2025-09-22 09:54:24'),
-(12, 'Martin Joseph', 'martin.joseph@mydigitalaccounts.com', '$2b$12$2mhIjIuBuNcm8wPYcJzN3.8JQjOHspi4BZGjppuhmUiCEO09vHFDa', 'Employee', 'https://ui-avatars.com/api/?name=Martin%20Joseph&background=6366f1&color=fff', 'dev', 'dev', '2025-09-22', 25, NULL, NULL, NULL, NULL, NULL, NULL),
-(13, 'Test Employee', 'employee@test.com', '$2b$12$7Za9sHY0/wl0Fpq9qLbscuZfUVstdbpJ7j6k.bPxsC3klNpdRax..', 'Employee', 'https://ui-avatars.com/api/?name=Test+Employee&background=6366f1&color=fff', 'Testing', 'Test User', '2024-01-01', 0, NULL, NULL, NULL, NULL, NULL, NULL);
+INSERT INTO `users` (`id`, `name`, `email`, `password_hash`, `role`, `avatar_url`, `team`, `job_title`, `start_date`, `onboarding_progress`, `mfa_enabled`, `mfa_secret`, `mfa_backup_codes`, `mfa_setup_completed`, `email_otp_enabled`, `manager_id`, `buddy_id`, `invitation_token`, `invitation_expires`, `reset_token`, `reset_expires`) VALUES
+(1, 'Admin User', 'admin@example.com', '$2b$12$fsfHwhaEVBaoHx6E0TKS4urpHzZH1c/kss30ccAbu/vyWGLA/T5Ke', 'Admin', 'https://ui-avatars.com/api/?name=Admin+User&background=6366f1&color=fff', 'Management', 'Administrator', '2022-01-01', 53, 0, 'FA7CKTS6IE4HALZYKFAGOZ2RGFQS4KRJMEYUOMSCLM3UKQ3WI5DQ', NULL, 0, 0, NULL, NULL, NULL, NULL, NULL, NULL),
+(6, 'Alex Doe', 'user@example.com', '$2b$12$HfukoU0wxexckqb55OW/M.TZqzX5AwnvCI6G06KC8tpD5thJUAjBu', 'Employee', 'https://ui-avatars.com/api/?name=Alex+Doe&background=6366f1&color=fff', 'Engineering', 'Developer', '2024-01-01', 83, 0, NULL, NULL, 0, 0, NULL, NULL, NULL, NULL, NULL, NULL),
+(9, 'Anji Reddy', 'anji.reddy@mydigitalaccounts.com', '$2b$12$XQqXKPxuh594bMwGh8mx1O/HavchR6p8QL.zgfmMYLjkFrb5tQCde', 'Admin', 'https://ui-avatars.com/api/?name=Anji%20Reddy&background=6366f1&color=fff', 'IT', 'Network and DevOps Manager', '2025-09-18', 43, 0, NULL, NULL, 0, 0, NULL, NULL, NULL, NULL, '4szt3hl0x6nmfv7wdy7', '2025-09-22 09:54:24'),
+(18, 'Martin', 'martin.joseph@mydigitalaccounts.com', '$2b$12$DVrMee1e.9RX9gpg.usBUOGZObBkQ/oEAMyW4uN7G0KwD52SCLq/C', 'Employee', 'https://ui-avatars.com/api/?name=Martin&background=6366f1&color=fff', 'IT', 'Network', '2025-09-24', 0, 0, NULL, NULL, 0, 0, NULL, NULL, '48rntvm4udkmfy4ctvq', '2025-09-25 15:08:32', NULL, NULL),
+(19, 'Lavanya', 'lavanya.ravichandran@mydigitalaccounts.com', '$2b$12$RLwBLgOSuVhCedJJip8ZHOpg3GCz4bqxpvCdS524jp1iaikXB5vAC', 'HR', 'https://ui-avatars.com/api/?name=Lavanya&background=6366f1&color=fff', 'HR', 'HR', '2025-09-25', 0, 0, NULL, NULL, 0, 0, NULL, NULL, 'xf2ltl48unmfza572g', '2025-09-26 10:38:19', NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -349,25 +412,6 @@ CREATE TABLE `user_assignments` (
 --
 
 INSERT INTO `user_assignments` (`id`, `user_id`, `item_type`, `item_id`, `assigned_by`, `assigned_date`, `due_date`, `status`, `completed_date`, `is_required`) VALUES
-(1, 12, 'task', 1, 1, '2025-09-22 12:27:45', '2025-09-26', 'completed', '2025-09-22 12:32:50', 1),
-(2, 12, 'task', 2, 1, '2025-09-22 12:27:45', '2025-09-26', 'completed', '2025-09-22 12:32:54', 1),
-(3, 12, 'task', 3, 1, '2025-09-22 13:15:02', '2025-09-23', 'pending', NULL, 1),
-(4, 12, 'task', 4, 1, '2025-09-22 13:15:02', '2025-09-23', 'pending', NULL, 1),
-(5, 12, 'training', 8, 9, '2025-09-23 12:42:53', '0000-00-00', 'pending', NULL, 1),
-(6, 12, 'training', 7, 9, '2025-09-23 12:42:53', '0000-00-00', 'pending', NULL, 1),
-(7, 12, 'policy', 1, 9, '2025-09-23 12:45:08', '0000-00-00', 'pending', NULL, 1),
-(8, 12, 'policy', 3, 9, '2025-09-23 12:46:52', '0000-00-00', 'pending', NULL, 1),
-(9, 12, 'policy', 5, 9, '2025-09-23 12:46:52', '0000-00-00', 'pending', NULL, 1),
-(10, 12, 'task', 13, 9, '2025-09-23 12:47:34', '0000-00-00', 'pending', NULL, 1),
-(11, 12, 'task', 12, 9, '2025-09-23 12:47:34', '0000-00-00', 'pending', NULL, 1),
-(12, 12, 'policy', 6, 9, '2025-09-23 12:47:34', '0000-00-00', 'pending', NULL, 1),
-(13, 12, 'policy', 4, 9, '2025-09-23 12:49:09', '0000-00-00', 'pending', NULL, 1),
-(14, 12, 'policy', 2, 9, '2025-09-23 12:49:26', '0000-00-00', 'pending', NULL, 1),
-(15, 12, 'task', 9, 9, '2025-09-23 12:51:28', '0000-00-00', 'pending', NULL, 1),
-(16, 12, 'policy', 1, 9, '2025-09-23 12:51:54', '0000-00-00', 'pending', NULL, 1),
-(17, 12, 'task', 13, 9, '2025-09-23 12:51:54', '0000-00-00', 'pending', NULL, 1),
-(18, 12, 'task', 12, 9, '2025-09-23 12:51:54', '0000-00-00', 'pending', NULL, 1),
-(19, 12, 'task', 11, 9, '2025-09-23 12:53:40', '0000-00-00', 'pending', NULL, 1),
 (20, 9, 'training', 10, 9, '2025-09-23 13:30:06', '0000-00-00', 'pending', NULL, 1),
 (21, 9, 'policy', 1, 9, '2025-09-23 15:15:55', '0000-00-00', 'pending', NULL, 1);
 
@@ -409,9 +453,7 @@ INSERT INTO `user_documents` (`id`, `user_id`, `name`, `status`, `action_date`, 
 (8, 9, 'Mda Multi-arch Ci_cd + Base Image Standards (base & App).docx', 'Uploaded', NULL, NULL, '/uploads/document-1758634282851-73020098.pdf', 'ISMS-APEX1-Policy.pdf', 73825, 'application/pdf', '2025-09-23 13:31:22', 'Medium', NULL, '2025-09-23 14:38:54'),
 (9, 9, 'Mda Multi-arch Ci_cd + Base Image Standards (base & App).docx', 'Verified', '2025-09-23', NULL, '/uploads/document-1758634293685-780773567.pdf', 'ISMS-APEX1-Policy.pdf', 73825, 'application/pdf', '2025-09-23 13:46:52', 'Medium', NULL, '2025-09-23 14:38:54'),
 (10, 9, 'id card', 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, '2025-09-23 14:39:55', 'Medium', NULL, '2025-09-23 14:39:55'),
-(11, 12, 'Tax', 'Verified', '2025-09-23', NULL, '/uploads/document-1758639364471-803677153.docx', 'trainingFile-1758197875336-699014287 (1).docx', 20688, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', '2025-09-23 14:56:26', 'Medium', NULL, '2025-09-23 14:44:17'),
-(12, 9, 'ISMS-APEX2-Scope.pdf', 'Verified', '2025-09-23', NULL, '/uploads/document-1758639126050-704243932.pdf', 'ISMS-APEX2-Scope.pdf', 59704, 'application/pdf', '2025-09-23 14:56:44', 'Medium', NULL, '2025-09-23 14:52:06'),
-(13, 12, 'Upload Your passphoto', 'Pending', NULL, NULL, NULL, NULL, NULL, NULL, '2025-09-23 15:06:15', 'Medium', NULL, '2025-09-23 15:06:15');
+(12, 9, 'ISMS-APEX2-Scope.pdf', 'Verified', '2025-09-23', NULL, '/uploads/document-1758639126050-704243932.pdf', 'ISMS-APEX2-Scope.pdf', 59704, 'application/pdf', '2025-09-23 14:56:44', 'Medium', NULL, '2025-09-23 14:52:06');
 
 -- --------------------------------------------------------
 
@@ -434,12 +476,8 @@ CREATE TABLE `user_roles` (
 INSERT INTO `user_roles` (`id`, `user_id`, `role`, `is_active`, `created_at`) VALUES
 (1, 1, 'Admin', 1, '2025-09-23 11:30:14'),
 (2, 6, 'Employee', 1, '2025-09-23 10:28:52'),
-(3, 8, 'HR', 1, '2025-09-23 10:28:52'),
 (4, 9, 'Employee', 1, '2025-09-23 11:35:06'),
-(5, 12, 'Employee', 1, '2025-09-23 10:28:52'),
-(6, 13, 'Employee', 1, '2025-09-23 10:28:52'),
 (8, 1, 'Employee', 1, '2025-09-23 11:30:03'),
-(9, 8, 'Employee', 1, '2025-09-23 10:28:52'),
 (10, 6, 'Admin', 1, '2025-09-23 10:28:52'),
 (11, 9, 'Admin', 1, '2025-09-23 11:35:01');
 
@@ -497,6 +535,24 @@ ALTER TABLE `it_assets`
   ADD KEY `assigned_to_id` (`assigned_to_id`);
 
 --
+-- Indexes for table `mfa_audit_log`
+--
+ALTER TABLE `mfa_audit_log`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_user_action` (`user_id`,`action`),
+  ADD KEY `idx_created_at` (`created_at`);
+
+--
+-- Indexes for table `mfa_sessions`
+--
+ALTER TABLE `mfa_sessions`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `session_token` (`session_token`),
+  ADD KEY `idx_session_token` (`session_token`),
+  ADD KEY `idx_user_id` (`user_id`),
+  ADD KEY `idx_expires` (`expires_at`);
+
+--
 -- Indexes for table `notifications`
 --
 ALTER TABLE `notifications`
@@ -538,6 +594,14 @@ ALTER TABLE `task_categories`
 --
 ALTER TABLE `training_modules`
   ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `trusted_devices`
+--
+ALTER TABLE `trusted_devices`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `unique_user_device` (`user_id`,`device_fingerprint`),
+  ADD KEY `idx_expires_at` (`expires_at`);
 
 --
 -- Indexes for table `users`
@@ -601,6 +665,18 @@ ALTER TABLE `it_assets`
   MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
+-- AUTO_INCREMENT for table `mfa_audit_log`
+--
+ALTER TABLE `mfa_audit_log`
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+--
+-- AUTO_INCREMENT for table `mfa_sessions`
+--
+ALTER TABLE `mfa_sessions`
+  MODIFY `id` int NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `notifications`
 --
 ALTER TABLE `notifications`
@@ -637,10 +713,16 @@ ALTER TABLE `training_modules`
   MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
+-- AUTO_INCREMENT for table `trusted_devices`
+--
+ALTER TABLE `trusted_devices`
+  MODIFY `id` int NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20;
 
 --
 -- AUTO_INCREMENT for table `user_assignments`
@@ -683,6 +765,18 @@ ALTER TABLE `it_assets`
   ADD CONSTRAINT `it_assets_ibfk_1` FOREIGN KEY (`assigned_to_id`) REFERENCES `users` (`id`) ON DELETE SET NULL;
 
 --
+-- Constraints for table `mfa_audit_log`
+--
+ALTER TABLE `mfa_audit_log`
+  ADD CONSTRAINT `mfa_audit_log_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `mfa_sessions`
+--
+ALTER TABLE `mfa_sessions`
+  ADD CONSTRAINT `mfa_sessions_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+--
 -- Constraints for table `notifications`
 --
 ALTER TABLE `notifications`
@@ -711,6 +805,12 @@ ALTER TABLE `tasks`
 --
 ALTER TABLE `task_categories`
   ADD CONSTRAINT `task_categories_ibfk_1` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `trusted_devices`
+--
+ALTER TABLE `trusted_devices`
+  ADD CONSTRAINT `trusted_devices_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `users`

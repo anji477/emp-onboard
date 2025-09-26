@@ -7,6 +7,9 @@ import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import bcrypt from 'bcrypt';
 import fs from 'fs';
+import speakeasy from 'speakeasy';
+import QRCode from 'qrcode';
+import crypto from 'crypto';
 import db from './db-mysql.js'; // Import our database connection
 import { generateToken, verifyToken, requireRole } from './middleware/auth.js';
 
@@ -587,30 +590,46 @@ app.post('/api/users/invite', verifyToken, requireRole(['Admin', 'HR']), async (
     
     const [result] = await db.execute(
       'INSERT INTO users (name, email, password_hash, role, avatar_url, team, job_title, start_date, onboarding_progress, invitation_token, invitation_expires) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [name, email, tempHashedPassword, role || 'Employee', avatar_url, team, job_title, start_date, 0, token, expiresAt.toISOString()]
+      [name, email, tempHashedPassword, role || 'Employee', avatar_url, team || null, job_title || null, start_date || null, 0, token, expiresAt.toISOString().slice(0, 19).replace('T', ' ')]
     );
     
     // Send invitation email
+    console.log('Attempting to send invitation email to:', email);
     try {
       const { sendInvitationEmail } = await import('./services/emailService.js');
+      console.log('Email service imported successfully');
+      
       const emailSent = await sendInvitationEmail(email, name, token);
+      console.log('Email send result:', emailSent);
       
       const [newUsers] = await db.execute('SELECT * FROM users WHERE id = ?', [result.insertId]);
       const newUser = newUsers[0];
+      
+      const message = emailSent ? 
+        'User invited and email sent successfully! Check server logs for details.' : 
+        'User invited but email failed to send. Check email configuration in Settings.';
+      
+      console.log('Invitation result:', { userId: newUser.id, email, emailSent, message });
       
       res.status(201).json({ 
         user: newUser, 
         emailSent,
-        message: emailSent ? 'User invited and email sent successfully' : 'User invited but email failed to send'
+        message
       });
     } catch (emailError) {
-      console.error('Email service error:', emailError);
+      console.error('Email service error details:', {
+        message: emailError.message,
+        code: emailError.code,
+        stack: emailError.stack
+      });
+      
       const [newUsers] = await db.execute('SELECT * FROM users WHERE id = ?', [result.insertId]);
       const newUser = newUsers[0];
+      
       res.status(201).json({ 
         user: newUser, 
         emailSent: false,
-        message: 'User invited but email service unavailable'
+        message: `User invited but email service error: ${emailError.message}`
       });
     }
   } catch (error) {
@@ -688,7 +707,7 @@ app.post('/api/forgot-password', async (req, res) => {
     
     await db.execute(
       'UPDATE users SET reset_token = ?, reset_expires = ? WHERE id = ?',
-      [resetToken, expiresAt.toISOString(), user.id]
+      [resetToken, expiresAt.toISOString().slice(0, 19).replace('T', ' '), user.id]
     );
     
     // Try to send email
@@ -864,7 +883,7 @@ app.post('/api/auth/change-password', verifyToken, async (req, res) => {
   }
 });
 
-// LOGIN authentication
+// LOGIN authentication with MFA support
 app.post('/api/login', async (req, res) => {
   try {
     const { email, password, rememberMe } = req.body;
@@ -890,14 +909,56 @@ app.post('/api/login', async (req, res) => {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
     
+    // Check if MFA is required
+    const [mfaSettings] = await db.execute(
+      'SELECT setting_value FROM organization_settings WHERE setting_key = "mfa_policy"'
+    );
+    
+    let mfaRequired = false;
+    if (mfaSettings.length > 0) {
+      const policy = JSON.parse(mfaSettings[0].setting_value);
+      mfaRequired = policy.enforced || (policy.require_for_roles && policy.require_for_roles.includes(user.role));
+    }
+    
+    // Check if MFA is required for this user
+    if (mfaRequired) {
+      // If user hasn't set up MFA yet, redirect to setup
+      if (!user.mfa_enabled || !user.mfa_setup_completed) {
+        return res.json({
+          requiresMfaSetup: true,
+          userEmail: user.email,
+          userName: user.name
+        });
+      }
+      
+      // User has MFA set up, check for trusted device
+      const deviceFingerprint = crypto.createHash('sha256')
+        .update(req.headers['user-agent'] + req.ip)
+        .digest('hex');
+      
+      const [trustedDevices] = await db.execute(
+        'SELECT id FROM trusted_devices WHERE user_id = ? AND device_fingerprint = ? AND expires_at > NOW()',
+        [user.id, deviceFingerprint]
+      );
+      
+      if (trustedDevices.length === 0) {
+        return res.json({
+          requiresMfa: true,
+          userEmail: user.email,
+          mfaEnabled: user.mfa_enabled,
+          setupCompleted: user.mfa_setup_completed
+        });
+      }
+    }
+    
     // Return user data without password
-    const { password_hash, invitation_token, invitation_expires, ...userData } = user;
+    const { password_hash, invitation_token, invitation_expires, mfa_secret, mfa_backup_codes, ...userData } = user;
     
     // Generate JWT token
     const token = generateToken(userData);
     
-    // Set HTTP-only cookie with dynamic expiration
-    const cookieMaxAge = rememberMe ? 30 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000; // 30 days or 24 hours
+    // Set HTTP-only cookie
+    const cookieMaxAge = rememberMe ? 30 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
     res.cookie('token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -905,26 +966,12 @@ app.post('/api/login', async (req, res) => {
       maxAge: cookieMaxAge
     });
     
-    // Get available roles from user_roles table
-    let availableRoles = [userData.role];
-    let currentRole = userData.role;
-    
-    try {
-      const [userRoles] = await db.execute('SELECT role FROM user_roles WHERE user_id = ? AND is_active = TRUE ORDER BY created_at', [userData.id]);
-      if (userRoles.length > 0) {
-        availableRoles = userRoles.map(r => r.role);
-      }
-    } catch (roleError) {
-      console.log('user_roles table not available, using single role');
-    }
-    
     res.json({
       user: {
         id: userData.id,
         name: userData.name,
         email: userData.email,
-        role: currentRole,
-        availableRoles: availableRoles,
+        role: userData.role,
         avatarUrl: userData.avatar_url,
         team: userData.team,
         jobTitle: userData.job_title,
@@ -1234,14 +1281,25 @@ app.put('/api/settings', verifyToken, requireRole(['Admin']), updateSettings);
 // Test email configuration
 app.post('/api/test-email', verifyToken, requireRole(['Admin']), async (req, res) => {
   try {
+    const { testEmail } = req.body;
     const { testEmailConfig } = await import('./services/emailService.js');
-    const result = await testEmailConfig();
+    const result = await testEmailConfig(testEmail);
     res.json(result);
   } catch (error) {
     console.error('Email test error:', error);
     res.status(500).json({ success: false, message: 'Email service unavailable' });
   }
 });
+
+// Import MFA routes
+import mfaRoutes from './routes/mfa.js';
+
+// Use MFA routes
+app.use('/api/mfa', mfaRoutes);
+
+
+
+
 
 // Global search endpoint
 app.get('/api/search', verifyToken, async (req, res) => {
@@ -2213,8 +2271,28 @@ app.delete('/api/task-categories/:id', verifyToken, requireRole(['Admin', 'HR'])
   }
 });
 
+// Cleanup expired MFA sessions periodically
+const cleanupExpiredSessions = async () => {
+  try {
+    const [result] = await db.execute('DELETE FROM mfa_sessions WHERE expires_at < NOW()');
+    if (result.affectedRows > 0) {
+      console.log(`🧹 Cleaned up ${result.affectedRows} expired MFA sessions`);
+    }
+  } catch (error) {
+    console.error('Error cleaning up expired sessions:', error);
+  }
+};
+
+// Run cleanup based on environment variable
+const cleanupInterval = (parseInt(process.env.MFA_CLEANUP_INTERVAL_HOURS) || 1) * 60 * 60 * 1000;
+setInterval(cleanupExpiredSessions, cleanupInterval);
+
 // --- Start the server ---
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server is running on http://0.0.0.0:${PORT}`);
+  console.log('🔐 MFA system initialized with enhanced security');
+  
+  // Run initial cleanup
+  setTimeout(cleanupExpiredSessions, 5000);
 });

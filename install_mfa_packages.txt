@@ -1,0 +1,9 @@
+Run these commands to install MFA packages:
+
+Backend:
+npm install speakeasy qrcode crypto
+
+Frontend:
+npm install qrcode.react
+
+Then restart your server after installation.

@@ -1,0 +1,15 @@
+Required NPM packages for MFA implementation:
+
+Backend:
+npm install speakeasy qrcode otplib crypto
+
+Frontend:
+npm install qrcode.react react-qr-code
+
+Package purposes:
+- speakeasy: Generate TOTP secrets and verify codes
+- qrcode: Generate QR codes for authenticator setup
+- otplib: Alternative TOTP library (more modern)
+- crypto: Generate secure backup codes
+- qrcode.react: Display QR codes in React
+- react-qr-code: Alternative QR code component

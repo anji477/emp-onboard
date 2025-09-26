@@ -18,6 +18,7 @@ import AssignmentManager from './components/pages/AssignmentManager';
 import Login from './components/pages/Login';
 import SetupPassword from './components/pages/SetupPassword';
 import ResetPassword from './components/pages/ResetPassword';
+import MfaSetup from './components/pages/MfaSetup';
 import MaintenancePage from './components/MaintenancePage';
 import { User, UserRole } from './types';
 import { mockUser, mockAdmin } from './data/mockData';
@@ -33,15 +34,22 @@ const App: React.FC = () => {
   useEffect(() => {
     const checkAuth = async () => {
       try {
+        console.log('Checking authentication...');
         const response = await fetch('/api/me', {
           credentials: 'include'
         });
+        console.log('Auth check response:', response.status);
         if (response.ok) {
           const userData = await response.json();
+          console.log('User authenticated:', userData);
           setUser(userData);
+        } else if (response.status === 401) {
+          console.log('User not authenticated');
+          setUser(null);
         }
       } catch (error) {
         console.error('Auth check failed:', error);
+        setUser(null);
       } finally {
         setLoading(false);
       }
@@ -96,6 +104,7 @@ const App: React.FC = () => {
             </>
           ) : (
             <>
+              <Route path="/mfa-setup" element={<MfaSetup />} />
               <Route path="/" element={<Layout />}>
                 <Route index element={<Dashboard />} />
                 <Route path="tasks" element={<Tasks />} />

@@ -15,11 +15,13 @@ export default defineConfig(({ mode }) => {
       },
       server: {
         host: '0.0.0.0',
+        port: 5173,
         proxy: {
           '/api': {
             target: 'http://192.168.1.140:3001',
             changeOrigin: true,
-            secure: false
+            secure: false,
+            rewrite: (path) => path
           },
           '/uploads': {
             target: 'http://192.168.1.140:3001',

@@ -7,6 +7,12 @@ import Icon from './common/Icon';
 import Loader from './common/Loader';
 import { Notification, UserRole } from '../types';
 
+interface CompanySettings {
+    name: string;
+    logo: string;
+    primaryColor: string;
+}
+
 interface HeaderProps {
     setSidebarOpen: (open: boolean) => void;
 }
@@ -28,6 +34,7 @@ const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
     const [changingPassword, setChangingPassword] = useState(false);
     const [passwordPolicy, setPasswordPolicy] = useState({ minLength: 8, requireUppercase: true, requireNumbers: true, requireSymbols: true });
     const [showPasswords, setShowPasswords] = useState({ current: false, new: false, confirm: false });
+    const [companySettings, setCompanySettings] = useState<CompanySettings>({ name: 'Onboardly', logo: '', primaryColor: '#6366f1' });
     const notificationRef = useRef<HTMLDivElement>(null);
     const searchRef = useRef<HTMLDivElement>(null);
     const profileRef = useRef<HTMLDivElement>(null);
@@ -38,6 +45,7 @@ const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
         if (auth?.user?.id) {
             fetchNotifications();
             fetchPasswordPolicy();
+            fetchCompanySettings();
         }
     }, [auth?.user?.id]);
     
@@ -51,6 +59,19 @@ const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
             }
         } catch (error) {
             console.error('Error fetching password policy:', error);
+        }
+    };
+    
+    const fetchCompanySettings = async () => {
+        try {
+            const response = await fetch('/api/settings', { credentials: 'include' });
+            if (response.ok) {
+                const data = await response.json();
+                const company = data.company_info?.value || { name: 'Onboardly', logo: '', primaryColor: '#6366f1' };
+                setCompanySettings(company);
+            }
+        } catch (error) {
+            console.error('Error fetching company settings:', error);
         }
     };
     
@@ -288,6 +309,15 @@ const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
                 <button onClick={() => setSidebarOpen(true)} className="text-gray-500 focus:outline-none lg:hidden">
                     <Icon name="bars-3" className="h-6 w-6" />
                 </button>
+                
+                <div className="hidden lg:flex items-center ml-4">
+                    <div className="flex items-center space-x-2">
+                        <div className="h-8 w-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center">
+                            <span className="text-white font-bold text-sm">MD</span>
+                        </div>
+                        <span className="text-xl font-bold text-gray-900 dark:text-white">MyDigitalAccounts</span>
+                    </div>
+                </div>
                 <div className="relative mx-4 lg:mx-0" ref={searchRef}>
                     <span className="absolute inset-y-0 left-0 flex items-center pl-3">
                          <Icon name="magnifying-glass" className="h-5 w-5 text-gray-500" />

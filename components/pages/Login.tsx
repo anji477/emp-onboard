@@ -1,10 +1,18 @@
 
-import React, { useContext, useState } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import { UserContext } from '../../App';
 import { UserRole } from '../../types';
 import Button from '../common/Button';
 import Icon from '../common/Icon';
 import Loader from '../common/Loader';
+import MfaVerification from './MfaVerification';
+import MfaSetup from './MfaSetup';
+
+interface CompanySettings {
+    name: string;
+    logo: string;
+    primaryColor: string;
+}
 
 const Login: React.FC = () => {
     const auth = useContext(UserContext);
@@ -16,6 +24,32 @@ const Login: React.FC = () => {
     const [resetEmail, setResetEmail] = useState('');
     const [resetMessage, setResetMessage] = useState('');
     const [rememberMe, setRememberMe] = useState(false);
+    const [companySettings, setCompanySettings] = useState<CompanySettings>({ name: 'Onboardly', logo: '', primaryColor: '#6366f1' });
+    
+    // MFA state
+    const [showMfaVerification, setShowMfaVerification] = useState(false);
+    const [showMfaSetup, setShowMfaSetup] = useState(false);
+    const [mfaSessionToken, setMfaSessionToken] = useState('');
+    const [userEmail, setUserEmail] = useState('');
+    const [userName, setUserName] = useState('');
+
+    
+    useEffect(() => {
+        fetchCompanySettings();
+    }, []);
+    
+    const fetchCompanySettings = async () => {
+        try {
+            const response = await fetch('/api/settings');
+            if (response.ok) {
+                const data = await response.json();
+                const company = data.company_info?.value || { name: 'Onboardly', logo: '', primaryColor: '#6366f1' };
+                setCompanySettings(company);
+            }
+        } catch (error) {
+            console.log('Could not fetch company settings, using defaults');
+        }
+    };
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -34,13 +68,22 @@ const Login: React.FC = () => {
             console.log('Login response:', { status: response.status, data });
             
             if (response.ok) {
-                console.log('Login successful, user data:', data.user);
-                // Update context (cookie is set automatically)
-                if (auth?.updateUser) {
-                    auth.updateUser(data.user);
+                if (data.requiresMfaSetup) {
+                    console.log('MFA setup required');
+                    setMfaSessionToken(data.sessionToken);
+                    setUserEmail(data.userEmail);
+                    setUserName(data.userName);
+                    setShowMfaSetup(true);
+                } else if (data.requiresMfa) {
+                    console.log('MFA verification required');
+                    setMfaSessionToken(data.sessionToken);
+                    setUserEmail(data.userEmail);
+                    setShowMfaVerification(true);
+                } else {
+                    console.log('Login successful, user data:', data.user);
+                    // Force page reload to update context
+                    window.location.reload();
                 }
-                // Force page reload to update context
-                window.location.reload();
             } else {
                 console.log('Login failed:', data.message);
                 setError(data.message || 'Login failed');
@@ -55,11 +98,48 @@ const Login: React.FC = () => {
     
 
 
+    const handleMfaSuccess = (userData: any) => {
+        console.log('MFA verification successful:', userData);
+        // Force page reload to update context
+        window.location.reload();
+    };
+
+    // Show MFA setup if required
+    if (showMfaSetup) {
+        return (
+            <MfaSetup
+                sessionToken={mfaSessionToken}
+                userEmail={userEmail}
+                userName={userName}
+                onSuccess={handleMfaSuccess}
+                isRequired={true}
+            />
+        );
+    }
+
+    // Show MFA verification if required
+    if (showMfaVerification) {
+        return (
+            <MfaVerification
+                sessionToken={mfaSessionToken}
+                userEmail={userEmail}
+                onSuccess={handleMfaSuccess}
+            />
+        );
+    }
+
     return (
         <div className="flex items-center justify-center min-h-screen bg-gray-100">
             <div className="w-full max-w-md p-8 space-y-8 bg-white rounded-2xl shadow-lg">
                 <div className="text-center">
-                    <h1 className="text-4xl font-bold text-indigo-600">Onboardly</h1>
+                    <div className="flex items-center justify-center mb-4">
+                        <div className="h-12 w-12 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center shadow-lg mr-3">
+                            <span className="text-white font-bold text-lg">MD</span>
+                        </div>
+                        <h1 className="text-3xl font-bold text-gray-900">
+                            MyDigitalAccounts
+                        </h1>
+                    </div>
                     <p className="mt-2 text-gray-600">Welcome! Please sign in to continue.</p>
                 </div>
                 <form className="mt-8 space-y-6" onSubmit={handleLogin}>
