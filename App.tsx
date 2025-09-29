@@ -23,6 +23,8 @@ import MaintenancePage from './components/MaintenancePage';
 import { User, UserRole } from './types';
 import { mockUser, mockAdmin } from './data/mockData';
 import { ThemeProvider } from './contexts/ThemeContext';
+import ChatWidget from './components/chat/ChatWidget';
+
 
 export const UserContext = React.createContext<{ user: User | null; login: (role: UserRole) => void; logout: () => void; updateUser: (userData: Partial<User>) => void; } | null>(null);
 
@@ -119,12 +121,14 @@ const App: React.FC = () => {
                 {user.role === UserRole.Admin && <Route path="users" element={<UserManagement />} />}
                 {user.role === UserRole.Admin && <Route path="settings" element={<Settings />} />}
                 {(user.role === UserRole.Admin || user.role === 'HR') && <Route path="assignments" element={<AssignmentManager />} />}
+
               </Route>
               <Route path="/login" element={<Navigate to="/" replace />} />
             </>
           )}
         </Routes>
         </HashRouter>
+        {user && <ChatWidget user={user} />}
       </UserContext.Provider>
     </ThemeProvider>
   );

@@ -5,6 +5,8 @@ import { UserContext } from '../App';
 import { useTheme } from '../contexts/ThemeContext';
 import Icon from './common/Icon';
 import Loader from './common/Loader';
+import NotificationBell from './common/NotificationBell';
+
 import { Notification, UserRole } from '../types';
 
 interface CompanySettings {
@@ -21,8 +23,7 @@ const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
     const auth = useContext(UserContext);
     const navigate = useNavigate();
     const { darkMode, toggleDarkMode } = useTheme();
-    const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-    const [notifications, setNotifications] = useState<Notification[]>([]);
+
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState<any>(null);
     const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -35,15 +36,14 @@ const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
     const [passwordPolicy, setPasswordPolicy] = useState({ minLength: 8, requireUppercase: true, requireNumbers: true, requireSymbols: true });
     const [showPasswords, setShowPasswords] = useState({ current: false, new: false, confirm: false });
     const [companySettings, setCompanySettings] = useState<CompanySettings>({ name: 'Onboardly', logo: '', primaryColor: '#6366f1' });
-    const notificationRef = useRef<HTMLDivElement>(null);
+
     const searchRef = useRef<HTMLDivElement>(null);
     const profileRef = useRef<HTMLDivElement>(null);
 
-    const unreadCount = notifications.filter(n => !n.is_read).length;
+
     
     useEffect(() => {
         if (auth?.user?.id) {
-            fetchNotifications();
             fetchPasswordPolicy();
             fetchCompanySettings();
         }
@@ -75,24 +75,7 @@ const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
         }
     };
     
-    const fetchNotifications = async () => {
-        try {
-            const response = await fetch(`/api/notifications/${auth?.user?.id}`);
-            if (response.ok) {
-                const data = await response.json();
-                const formattedNotifications = data.map((n: any) => ({
-                    id: n.id.toString(),
-                    message: n.message,
-                    timestamp: formatTimestamp(n.created_at),
-                    read: n.is_read,
-                    is_read: n.is_read
-                }));
-                setNotifications(formattedNotifications);
-            }
-        } catch (error) {
-            console.error('Error fetching notifications:', error);
-        }
-    };
+
     
     const formatTimestamp = (timestamp: string) => {
         const date = new Date(timestamp);
@@ -150,9 +133,7 @@ const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
-            if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
-                setIsNotificationsOpen(false);
-            }
+
             if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
                 setIsSearchOpen(false);
             }
@@ -167,33 +148,7 @@ const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
         };
     }, []);
 
-    const handleMarkAsRead = async (id: string) => {
-        try {
-            const response = await fetch(`/api/notifications/${id}/read`, {
-                method: 'PUT'
-            });
-            if (response.ok) {
-                setNotifications(notifications.map(n => 
-                    n.id === id ? { ...n, read: true, is_read: true } : n
-                ));
-            }
-        } catch (error) {
-            console.error('Error marking notification as read:', error);
-        }
-    };
 
-    const handleMarkAllAsRead = async () => {
-        try {
-            const response = await fetch(`/api/notifications/user/${auth?.user?.id}/read-all`, {
-                method: 'PUT'
-            });
-            if (response.ok) {
-                setNotifications(notifications.map(n => ({ ...n, read: true, is_read: true })));
-            }
-        } catch (error) {
-            console.error('Error marking all notifications as read:', error);
-        }
-    };
 
     const switchRole = async (newRole: UserRole) => {
         try {
@@ -304,7 +259,7 @@ const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
     }
 
     return (
-        <header className="flex items-center justify-between px-6 py-4 bg-white dark:bg-gray-800 border-b-2 border-gray-200 dark:border-gray-700 transition-colors duration-200">
+        <header className="flex items-center justify-between px-6 py-2 bg-white dark:bg-gray-800 border-b-2 border-gray-200 dark:border-gray-700 transition-colors duration-200">
             <div className="flex items-center">
                 <button onClick={() => setSidebarOpen(true)} className="text-gray-500 focus:outline-none lg:hidden">
                     <Icon name="bars-3" className="h-6 w-6" />
@@ -409,50 +364,9 @@ const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
                     )}
                 </button>
                 
-                <div className="relative" ref={notificationRef}>
-                    <button onClick={() => setIsNotificationsOpen(!isNotificationsOpen)} className="flex mx-4 text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 focus:outline-none relative">
-                        <Icon name="bell" className="h-6 w-6" />
-                        {unreadCount > 0 && (
-                            <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-xs text-white">
-                                {unreadCount}
-                            </span>
-                        )}
-                    </button>
 
-                    {isNotificationsOpen && (
-                        <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl overflow-hidden z-10 border">
-                            <div className="p-4 flex justify-between items-center border-b">
-                                <h4 className="font-semibold text-gray-800">Notifications</h4>
-                                {unreadCount > 0 && (
-                                    <button onClick={handleMarkAllAsRead} className="text-sm font-medium text-indigo-600 hover:text-indigo-800">
-                                        Mark all as read
-                                    </button>
-                                )}
-                            </div>
-                            <div className="max-h-96 overflow-y-auto">
-                                {notifications.length > 0 ? (
-                                    notifications.map(notification => (
-                                        <div 
-                                            key={notification.id} 
-                                            className={`p-4 border-b border-gray-100 flex items-start gap-3 transition-colors ${!notification.is_read ? 'bg-indigo-50 hover:bg-indigo-100 cursor-pointer' : 'hover:bg-gray-50'}`}
-                                            onClick={() => !notification.is_read && handleMarkAsRead(notification.id)}
-                                            role="button"
-                                            tabIndex={0}
-                                        >
-                                            {!notification.is_read && <div className="w-2 h-2 rounded-full bg-indigo-500 mt-1.5 flex-shrink-0"></div>}
-                                            <div className="flex-grow">
-                                                <p className="text-sm text-gray-700">{notification.message}</p>
-                                                <p className="text-xs text-gray-500 mt-1">{notification.timestamp}</p>
-                                            </div>
-                                        </div>
-                                    ))
-                                ) : (
-                                    <p className="text-center text-gray-500 py-8">No new notifications</p>
-                                )}
-                            </div>
-                        </div>
-                    )}
-                </div>
+                
+                <NotificationBell userId={auth.user.id} />
 
                 <div className="relative" ref={profileRef}>
                     <button 

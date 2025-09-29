@@ -44,7 +44,7 @@ const EmployeeAssetView: React.FC<AssetViewProps> = ({ assets, onAssetClick, onR
     return (
         <>
             <Card>
-                <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-4">Hardware</h2>
+                <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4">Hardware</h2>
                 <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50 dark:bg-gray-700">
@@ -77,7 +77,7 @@ const EmployeeAssetView: React.FC<AssetViewProps> = ({ assets, onAssetClick, onR
             </Card>
 
             <Card>
-                <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-4">Software & Licenses</h2>
+                <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4">Software & Licenses</h2>
                 <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50 dark:bg-gray-700">
@@ -380,8 +380,8 @@ const Assets: React.FC = () => {
         <div className="space-y-8">
             <div className="flex justify-between items-center flex-wrap gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-800 dark:text-white">{isAdmin ? 'IT Asset Management' : 'IT Assets'}</h1>
-                    <p className="text-gray-600 dark:text-gray-300 mt-1">{isAdmin ? 'Filter, track, and manage all company assets.' : 'View your assigned hardware and software assets.'}</p>
+                    <h1 className="text-xl font-bold text-gray-800 dark:text-white">{isAdmin ? 'IT Asset Management' : 'IT Assets'}</h1>
+                    <p className="text-gray-600 dark:text-gray-300 mt-1 text-sm">{isAdmin ? 'Filter, track, and manage all company assets.' : 'View your assigned hardware and software assets.'}</p>
                 </div>
                 <Button onClick={() => setShowAddAssetModal(true)}>
                     <Icon name="plus" className="w-5 h-5 mr-2" />

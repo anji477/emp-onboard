@@ -83,73 +83,73 @@ const Dashboard: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Welcome, {user.name}!</h1>
-        <p className="text-gray-600 dark:text-gray-300 mt-1">We're excited to have you on board. Here's a quick overview of your onboarding journey.</p>
+        <h1 className="text-xl font-bold text-gray-800 dark:text-white">Welcome, {user.name}!</h1>
+        <p className="text-gray-600 dark:text-gray-300 mt-1 text-sm">We're excited to have you on board. Here's a quick overview of your onboarding journey.</p>
       </div>
 
-      <Card>
-        <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-4">Your Onboarding Progress</h2>
+      <Card className="p-3">
+        <h2 className="text-base font-semibold text-gray-700 dark:text-gray-200 mb-2">Your Onboarding Progress</h2>
         {progressLoading ? (
-          <div className="flex justify-center py-8">
+          <div className="flex justify-center py-4">
             <Loader text="Loading progress..." />
           </div>
         ) : (
           <>
             <ProgressBar progress={progress} />
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 text-right">{progress}% Complete</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 text-right">{progress}% Complete</p>
           </>
         )}
       </Card>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {quickLinks.map(link => (
               <Link key={link.to} to={link.to} className="block">
                 <Card className="hover:shadow-lg hover:border-indigo-500 transition-all duration-200 h-full">
-                    <div className="flex flex-col items-center justify-center text-center p-4">
-                        <div className="p-4 bg-indigo-100 rounded-full mb-4">
-                            <Icon name={link.icon} className="h-8 w-8 text-indigo-600" />
+                    <div className="flex flex-col items-center justify-center text-center p-2">
+                        <div className="p-2 bg-indigo-100 rounded-full mb-2">
+                            <Icon name={link.icon} className="h-5 w-5 text-indigo-600" />
                         </div>
-                        <h3 className="font-semibold text-gray-700 dark:text-gray-200">{link.label}</h3>
+                        <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-200">{link.label}</h3>
                     </div>
                 </Card>
               </Link>
           ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <Card>
-          <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-4">Upcoming Tasks</h2>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card className="p-3">
+          <h2 className="text-base font-semibold text-gray-700 dark:text-gray-200 mb-2">Upcoming Tasks</h2>
           {loading ? (
             <div className="flex justify-center py-8">
               <Loader text="Loading tasks..." />
             </div>
           ) : upcomingTasks.length > 0 ? (
-            <ul className="space-y-4">
+            <ul className="space-y-2">
               {upcomingTasks.map(task => (
                 <li key={task.id} className="flex items-center justify-between">
                   <div>
-                    <p className="font-medium text-gray-800 dark:text-gray-200">{task.title}</p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Due: {task.dueDate}</p>
+                    <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{task.title}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Due: {task.dueDate}</p>
                   </div>
-                  <Link to="/tasks" className="text-sm font-medium text-indigo-600 hover:text-indigo-800">View</Link>
+                  <Link to="/tasks" className="text-xs font-medium text-indigo-600 hover:text-indigo-800">View</Link>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="text-center text-gray-500 dark:text-gray-400 py-8">No records found</p>
+            <p className="text-center text-gray-500 dark:text-gray-400 py-4 text-sm">No records found</p>
           )}
         </Card>
         {user.buddy && (
-          <Card>
-            <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-4">Your Onboarding Buddy</h2>
-            <div className="flex items-center space-x-4">
-              <img className="h-20 w-20 rounded-full object-cover" src={user.buddy.avatarUrl} alt="Buddy" />
+          <Card className="p-3">
+            <h2 className="text-base font-semibold text-gray-700 dark:text-gray-200 mb-2">Your Onboarding Buddy</h2>
+            <div className="flex items-center space-x-3">
+              <img className="h-12 w-12 rounded-full object-cover" src={user.buddy.avatarUrl} alt="Buddy" />
               <div>
-                <h3 className="text-lg font-semibold text-gray-800">{user.buddy.name}</h3>
-                <p className="text-gray-600">{user.buddy.role}</p>
-                <a href="#" className="text-sm font-medium text-indigo-600 hover:text-indigo-800 mt-1 inline-block">Send a message</a>
+                <h3 className="text-sm font-semibold text-gray-800">{user.buddy.name}</h3>
+                <p className="text-xs text-gray-600">{user.buddy.role}</p>
+                <a href="#" className="text-xs font-medium text-indigo-600 hover:text-indigo-800 mt-1 inline-block">Send a message</a>
               </div>
             </div>
           </Card>

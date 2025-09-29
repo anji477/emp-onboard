@@ -32,7 +32,7 @@ const TaskItem: React.FC<{ task: Task, onStatusChange: (id: string, status: Task
                         <Icon name="clipboard-document-list" className="h-4 w-4 text-gray-400" />
                     </div>
                     <div className="ml-4">
-                        <p className="font-medium text-gray-800 dark:text-gray-200">{task.title}</p>
+                        <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{task.title}</p>
                         <p className="text-sm text-gray-500 dark:text-gray-400">Due: {task.dueDate}</p>
                     </div>
                 </div>
@@ -70,7 +70,7 @@ const TaskItem: React.FC<{ task: Task, onStatusChange: (id: string, status: Task
                     onChange={() => onStatusChange(task.id, isCompleted ? TaskStatus.ToDo : TaskStatus.Completed)}
                 />
                 <div className="ml-4">
-                    <p className={`font-medium ${isCompleted ? 'text-gray-500 dark:text-gray-400 line-through' : 'text-gray-800 dark:text-gray-200'}`}>{task.title}</p>
+                    <p className={`text-sm font-medium ${isCompleted ? 'text-gray-500 dark:text-gray-400 line-through' : 'text-gray-800 dark:text-gray-200'}`}>{task.title}</p>
                     <p className="text-sm text-gray-500 dark:text-gray-400">Due: {task.dueDate}</p>
                 </div>
             </div>
@@ -282,10 +282,10 @@ const Tasks: React.FC = () => {
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-800 dark:text-white">
+                    <h1 className="text-xl font-bold text-gray-800 dark:text-white">
                         {isAdminOrHR ? 'Task Management' : 'Your Onboarding Tasks'}
                     </h1>
-                    <p className="text-gray-600 dark:text-gray-300 mt-1">
+                    <p className="text-gray-600 dark:text-gray-300 mt-1 text-sm">
                         {isAdminOrHR ? 'Create and manage employee tasks.' : 'Complete these tasks to get up to speed.'}
                     </p>
                 </div>
@@ -307,8 +307,8 @@ const Tasks: React.FC = () => {
                 <Card>
                     <div className="text-center py-12">
                         <Icon name="clipboard-document-list" className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No tasks found</h3>
-                        <p className="text-gray-500 dark:text-gray-400">
+                        <h3 className="text-base font-medium text-gray-900 dark:text-gray-100 mb-2">No tasks found</h3>
+                        <p className="text-gray-500 dark:text-gray-400 text-sm">
                             {isAdminOrHR ? 'Create tasks to assign to employees.' : 'No tasks have been assigned to you yet.'}
                         </p>
                     </div>
@@ -316,7 +316,7 @@ const Tasks: React.FC = () => {
             ) : (
                 Object.entries(groupedTasks).map(([category, tasksInCategory]) => (
                     <Card key={category}>
-                        <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-4">{category}</h2>
+                        <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4">{category}</h2>
                         <div className="space-y-3">
                         {tasksInCategory.map(task => (
                             <TaskItem 

@@ -107,7 +107,7 @@ const Settings: React.FC = () => {
     return (
       <div className="text-center py-16">
         <Icon name="shield-exclamation" className="h-12 w-12 mx-auto text-red-400 mb-4" />
-        <h2 className="text-xl font-semibold text-gray-900">Access Denied</h2>
+        <h2 className="text-lg font-semibold text-gray-900">Access Denied</h2>
         <p className="text-gray-600">Administrator privileges required to access settings.</p>
       </div>
     );
@@ -240,8 +240,8 @@ const Settings: React.FC = () => {
       {/* Header with Save Button */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Settings</h1>
-          <p className="text-gray-600 dark:text-gray-300 mt-1">Manage your organization settings and preferences</p>
+          <h1 className="text-xl font-bold text-gray-800 dark:text-white">Settings</h1>
+          <p className="text-gray-600 dark:text-gray-300 mt-1 text-sm">Manage your organization settings and preferences</p>
         </div>
         <Button
           onClick={handleSave}
@@ -296,7 +296,7 @@ const Settings: React.FC = () => {
       {/* Company Settings */}
       {activeTab === 'company' && settings && (
         <Card>
-          <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Company Information</h2>
+          <h2 className="text-lg font-semibold mb-4 text-gray-800 dark:text-white">Company Information</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Company Name</label>
@@ -450,7 +450,7 @@ const Settings: React.FC = () => {
             </div>
             
             <div className="md:col-span-2">
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-3">Brand Colors</h3>
+              <h3 className="text-base font-medium text-gray-900 dark:text-white mb-3">Brand Colors</h3>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Primary</label>
@@ -524,7 +524,7 @@ const Settings: React.FC = () => {
       {/* Security Settings */}
       {activeTab === 'security' && settings && (
         <Card>
-          <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Security Policies</h2>
+          <h2 className="text-lg font-semibold mb-4 text-gray-800 dark:text-white">Security Policies</h2>
           <div className="space-y-6">
             <div>
               <h3 className="text-lg font-medium mb-3 text-gray-800 dark:text-gray-200">Password Policy</h3>

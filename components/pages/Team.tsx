@@ -150,12 +150,12 @@ const Team: React.FC = () => {
     return (
         <div className="space-y-8">
             <div>
-                <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Team & Directory</h1>
-                <p className="text-gray-600 dark:text-gray-300 mt-1">Get to know your manager and colleagues.</p>
+                <h1 className="text-xl font-bold text-gray-800 dark:text-white">Team & Directory</h1>
+                <p className="text-gray-600 dark:text-gray-300 mt-1 text-sm">Get to know your manager and colleagues.</p>
             </div>
 
             <Card>
-                <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-6">Your Reporting Line</h2>
+                <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-6">Your Reporting Line</h2>
                 <div className="flex flex-col items-center">
                     {manager ? (
                          <>
@@ -165,7 +165,7 @@ const Team: React.FC = () => {
                                 src={manager.avatar_url || `https://ui-avatars.com/api/?name=${manager.name}&background=6366f1&color=fff`} 
                                 alt={manager.name} 
                              />
-                             <h3 className="mt-2 text-lg font-semibold text-gray-800 dark:text-gray-200">{manager.name}</h3>
+                             <h3 className="mt-2 text-base font-semibold text-gray-800 dark:text-gray-200">{manager.name}</h3>
                              <p className="text-gray-600 dark:text-gray-400">{manager.role} (Manager)</p>
                          </div>
                          <div className="flex items-center justify-center my-4">
@@ -194,14 +194,14 @@ const Team: React.FC = () => {
                             src={user.avatarUrl || `https://ui-avatars.com/api/?name=${user.name}&background=6366f1&color=fff`} 
                             alt={user.name} 
                          />
-                         <h3 className="mt-2 text-lg font-semibold text-gray-800 dark:text-gray-200">{user.name} (You)</h3>
+                         <h3 className="mt-2 text-base font-semibold text-gray-800 dark:text-gray-200">{user.name} (You)</h3>
                          <p className="text-gray-600 dark:text-gray-400">{user.role}</p>
                     </div>
                 </div>
             </Card>
 
             <Card>
-                <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-4">Your Team: {currentUserTeam}</h2>
+                <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4">Your Team: {currentUserTeam}</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                     {teamPeers.length > 0 ? (
                         teamPeers.map(member => (
@@ -211,7 +211,7 @@ const Team: React.FC = () => {
                                     src={member.avatar_url || `https://ui-avatars.com/api/?name=${member.name}&background=6366f1&color=fff`} 
                                     alt={member.name} 
                                 />
-                                <h3 className="mt-4 font-semibold text-gray-800 dark:text-gray-200">{member.name}</h3>
+                                <h3 className="mt-4 text-sm font-semibold text-gray-800 dark:text-gray-200">{member.name}</h3>
                                 <p className="text-sm text-gray-500 dark:text-gray-400">{member.role}</p>
                                 <a href={`mailto:${member.email}`} className="mt-2 inline-flex items-center text-sm font-medium text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300">
                                     <Icon name="envelope" className="h-4 w-4 mr-1"/> Email
@@ -228,7 +228,7 @@ const Team: React.FC = () => {
 
             <Card>
                 <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-200">Employee Directory</h2>
+                    <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200">Employee Directory</h2>
                     {auth.user.role === 'Admin' && (
                         <button
                             onClick={() => setShowAddUser(true)}
@@ -300,7 +300,7 @@ const Team: React.FC = () => {
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                     <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
                         <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Add New User</h3>
+                            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">Add New User</h3>
                             <button
                                 onClick={() => setShowAddUser(false)}
                                 className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
@@ -403,7 +403,7 @@ const Team: React.FC = () => {
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                     <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4">
                         <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Edit Roles for {editingUser.name}</h3>
+                            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">Edit Roles for {editingUser.name}</h3>
                             <button
                                 onClick={() => setEditingUser(null)}
                                 className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"

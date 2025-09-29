@@ -444,12 +444,12 @@ const Documents: React.FC = () => {
     }
 
     return (
-        <div className="space-y-8">
+        <div className="space-y-6">
             <div>
-                <h1 className="text-3xl font-bold text-gray-800 dark:text-white">
+                <h1 className="text-xl font-bold text-gray-800 dark:text-white">
                     {(auth?.user?.role === 'Admin' || auth?.user?.role === 'HR') ? 'HR Documents Management' : 'Documents Hub'}
                 </h1>
-                <p className="text-gray-600 dark:text-gray-300 mt-1">
+                <p className="text-gray-600 dark:text-gray-300 mt-1 text-sm">
                     {(auth?.user?.role === 'Admin' || auth?.user?.role === 'HR') 
                         ? 'Manage employee documents and compliance efficiently' 
                         : 'Manage your documents and access important company files.'}
@@ -460,30 +460,30 @@ const Documents: React.FC = () => {
             {(auth?.user?.role === 'Admin' || auth?.user?.role === 'HR') ? (
                 <>
                     {/* Statistics Cards */}
-                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
                         {(() => {
                             const stats = getDocumentStats();
                             return (
                                 <>
-                                    <Card className="p-4 text-center">
-                                        <div className="text-2xl font-bold text-blue-600">{stats.total}</div>
-                                        <div className="text-sm text-gray-600">Total</div>
+                                    <Card className="p-3 text-center">
+                                        <div className="text-lg font-bold text-blue-600">{stats.total}</div>
+                                        <div className="text-xs text-gray-600">Total</div>
                                     </Card>
-                                    <Card className="p-4 text-center">
-                                        <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
-                                        <div className="text-sm text-gray-600">Pending</div>
+                                    <Card className="p-3 text-center">
+                                        <div className="text-lg font-bold text-yellow-600">{stats.pending}</div>
+                                        <div className="text-xs text-gray-600">Pending</div>
                                     </Card>
-                                    <Card className="p-4 text-center">
-                                        <div className="text-2xl font-bold text-green-600">{stats.verified}</div>
-                                        <div className="text-sm text-gray-600">Verified</div>
+                                    <Card className="p-3 text-center">
+                                        <div className="text-lg font-bold text-green-600">{stats.verified}</div>
+                                        <div className="text-xs text-gray-600">Verified</div>
                                     </Card>
-                                    <Card className="p-4 text-center">
-                                        <div className="text-2xl font-bold text-red-600">{stats.rejected}</div>
-                                        <div className="text-sm text-gray-600">Rejected</div>
+                                    <Card className="p-3 text-center">
+                                        <div className="text-lg font-bold text-red-600">{stats.rejected}</div>
+                                        <div className="text-xs text-gray-600">Rejected</div>
                                     </Card>
-                                    <Card className="p-4 text-center">
-                                        <div className="text-2xl font-bold text-orange-600">{stats.overdue}</div>
-                                        <div className="text-sm text-gray-600">Overdue</div>
+                                    <Card className="p-3 text-center">
+                                        <div className="text-lg font-bold text-orange-600">{stats.overdue}</div>
+                                        <div className="text-xs text-gray-600">Overdue</div>
                                     </Card>
                                 </>
                             );
@@ -491,15 +491,15 @@ const Documents: React.FC = () => {
                     </div>
 
                     {/* Controls */}
-                    <Card className="p-4 mb-6">
-                        <div className="flex flex-wrap gap-4 items-center justify-between">
-                            <div className="flex gap-4 items-center">
+                    <Card className="p-3 mb-4">
+                        <div className="flex flex-wrap gap-3 items-center justify-between">
+                            <div className="flex gap-3 items-center">
                                 <input
                                     type="text"
                                     placeholder="Search documents, employees..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="px-3 py-2 border rounded-md w-64"
+                                    className="px-2 py-1.5 border rounded-md w-56 text-sm"
                                 />
                                 <select
                                     value={selectedUser}

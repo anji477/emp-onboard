@@ -217,8 +217,8 @@ const UserManagement: React.FC = () => {
     <div className="space-y-8">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800 dark:text-white">User Management</h1>
-          <p className="text-gray-600 dark:text-gray-300 mt-1">Manage employees and administrators.</p>
+          <h1 className="text-xl font-bold text-gray-800 dark:text-white">User Management</h1>
+          <p className="text-gray-600 dark:text-gray-300 mt-1 text-sm">Manage employees and administrators.</p>
         </div>
         <div className="flex gap-2">
           <button 

@@ -248,8 +248,8 @@ const HRDocuments: React.FC = () => {
             {/* Header */}
             <div className="flex justify-between items-center">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-800 dark:text-white">HR Documents Management</h1>
-                    <p className="text-gray-600 dark:text-gray-300 mt-1">Manage employee documents and compliance</p>
+                    <h1 className="text-xl font-bold text-gray-800 dark:text-white">HR Documents Management</h1>
+                    <p className="text-gray-600 dark:text-gray-300 mt-1 text-xs">Manage employee documents and compliance</p>
                 </div>
                 <div className="flex gap-2">
                     <Button onClick={() => setShowTemplateModal(true)} size="sm">
@@ -266,28 +266,28 @@ const HRDocuments: React.FC = () => {
             {/* Statistics Dashboard */}
             <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
                 <Card className="p-4">
-                    <div className="text-2xl font-bold text-blue-600">{stats.total}</div>
-                    <div className="text-sm text-gray-600">Total</div>
+                    <div className="text-base font-bold text-blue-600">{stats.total}</div>
+                    <div className="text-xs text-gray-600">Total</div>
                 </Card>
                 <Card className="p-4">
-                    <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
-                    <div className="text-sm text-gray-600">Pending</div>
+                    <div className="text-base font-bold text-yellow-600">{stats.pending}</div>
+                    <div className="text-xs text-gray-600">Pending</div>
                 </Card>
                 <Card className="p-4">
-                    <div className="text-2xl font-bold text-blue-600">{stats.uploaded}</div>
-                    <div className="text-sm text-gray-600">Uploaded</div>
+                    <div className="text-base font-bold text-blue-600">{stats.uploaded}</div>
+                    <div className="text-xs text-gray-600">Uploaded</div>
                 </Card>
                 <Card className="p-4">
-                    <div className="text-2xl font-bold text-green-600">{stats.verified}</div>
-                    <div className="text-sm text-gray-600">Verified</div>
+                    <div className="text-base font-bold text-green-600">{stats.verified}</div>
+                    <div className="text-xs text-gray-600">Verified</div>
                 </Card>
                 <Card className="p-4">
-                    <div className="text-2xl font-bold text-red-600">{stats.rejected}</div>
-                    <div className="text-sm text-gray-600">Rejected</div>
+                    <div className="text-base font-bold text-red-600">{stats.rejected}</div>
+                    <div className="text-xs text-gray-600">Rejected</div>
                 </Card>
                 <Card className="p-4">
-                    <div className="text-2xl font-bold text-orange-600">{stats.overdue}</div>
-                    <div className="text-sm text-gray-600">Overdue</div>
+                    <div className="text-base font-bold text-orange-600">{stats.overdue}</div>
+                    <div className="text-xs text-gray-600">Overdue</div>
                 </Card>
             </div>
 
@@ -358,7 +358,7 @@ const HRDocuments: React.FC = () => {
                 {/* Bulk Actions */}
                 {selectedDocs.length > 0 && (
                     <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg">
-                        <span className="text-sm font-medium">{selectedDocs.length} selected</span>
+                        <span className="text-xs font-medium">{selectedDocs.length} selected</span>
                         <Button onClick={() => { setBulkAction({action: 'verify', documentIds: selectedDocs}); setShowBulkModal(true); }} size="sm">
                             Verify All
                         </Button>
@@ -416,12 +416,12 @@ const HRDocuments: React.FC = () => {
                                         />
                                     </td>
                                     <td className="px-6 py-4">
-                                        <div className="text-sm font-medium text-gray-900">{doc.userName}</div>
-                                        <div className="text-sm text-gray-500">{doc.userEmail}</div>
+                                        <div className="text-xs font-medium text-gray-900">{doc.userName}</div>
+                                        <div className="text-xs text-gray-500">{doc.userEmail}</div>
                                     </td>
                                     <td className="px-6 py-4">
-                                        <div className="text-sm text-gray-900">{doc.name}</div>
-                                        {doc.fileName && <div className="text-sm text-gray-500">{doc.fileName}</div>}
+                                        <div className="text-xs text-gray-900">{doc.name}</div>
+                                        {doc.fileName && <div className="text-xs text-gray-500">{doc.fileName}</div>}
                                     </td>
                                     <td className="px-6 py-4">
                                         <div className={`w-3 h-3 rounded-full ${getPriorityColor(doc.priority)}`} title={doc.priority}></div>
@@ -431,10 +431,10 @@ const HRDocuments: React.FC = () => {
                                             {doc.status}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4 text-sm text-gray-500">
+                                    <td className="px-6 py-4 text-xs text-gray-500">
                                         {doc.uploadedAt ? new Date(doc.uploadedAt).toLocaleDateString() : '-'}
                                     </td>
-                                    <td className="px-6 py-4 text-sm font-medium">
+                                    <td className="px-6 py-4 text-xs font-medium">
                                         <div className="flex gap-2">
                                             {doc.status === DocumentStatus.Uploaded && (
                                                 <>
@@ -462,7 +462,7 @@ const HRDocuments: React.FC = () => {
                 {/* Pagination */}
                 {totalPages > 1 && (
                     <div className="flex items-center justify-between px-6 py-3 border-t">
-                        <div className="text-sm text-gray-700">
+                        <div className="text-xs text-gray-700">
                             Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, sortedDocuments.length)} of {sortedDocuments.length} results
                         </div>
                         <div className="flex gap-2">
@@ -474,7 +474,7 @@ const HRDocuments: React.FC = () => {
                             >
                                 Previous
                             </Button>
-                            <span className="px-3 py-1 text-sm">{currentPage} of {totalPages}</span>
+                            <span className="px-3 py-1 text-xs">{currentPage} of {totalPages}</span>
                             <Button
                                 onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
                                 disabled={currentPage === totalPages}
@@ -515,7 +515,7 @@ const HRDocuments: React.FC = () => {
                 <Modal isOpen={showAssignModal} onClose={() => setShowAssignModal(false)} title="Assign Documents">
                     <div className="space-y-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Document Template</label>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Document Template</label>
                             <select
                                 value={selectedTemplate}
                                 onChange={(e) => setSelectedTemplate(e.target.value)}
@@ -528,7 +528,7 @@ const HRDocuments: React.FC = () => {
                             </select>
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Assign to Users</label>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Assign to Users</label>
                             <div className="max-h-48 overflow-y-auto border rounded-md p-2">
                                 {users.map(user => (
                                     <label key={user.id} className="flex items-center p-2 hover:bg-gray-50">
@@ -545,7 +545,7 @@ const HRDocuments: React.FC = () => {
                                             className="mr-2"
                                         />
                                         <div>
-                                            <div className="text-sm font-medium">{user.name}</div>
+                                            <div className="text-xs font-medium">{user.name}</div>
                                             <div className="text-xs text-gray-500">{user.email}</div>
                                         </div>
                                     </label>
@@ -567,7 +567,7 @@ const HRDocuments: React.FC = () => {
                 <Modal isOpen={showTemplateModal} onClose={() => setShowTemplateModal(false)} title="Create Document Template">
                     <div className="space-y-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Template Name</label>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Template Name</label>
                             <input
                                 type="text"
                                 value={newTemplate.name || ''}
@@ -576,7 +576,7 @@ const HRDocuments: React.FC = () => {
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
                             <textarea
                                 value={newTemplate.description || ''}
                                 onChange={(e) => setNewTemplate({...newTemplate, description: e.target.value})}
@@ -586,7 +586,7 @@ const HRDocuments: React.FC = () => {
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+                                <label className="block text-xs font-medium text-gray-700 mb-1">Priority</label>
                                 <select
                                     value={newTemplate.priority || 'Medium'}
                                     onChange={(e) => setNewTemplate({...newTemplate, priority: e.target.value as any})}
@@ -599,7 +599,7 @@ const HRDocuments: React.FC = () => {
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Due in Days</label>
+                                <label className="block text-xs font-medium text-gray-700 mb-1">Due in Days</label>
                                 <input
                                     type="number"
                                     value={newTemplate.dueInDays || ''}

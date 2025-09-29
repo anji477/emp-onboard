@@ -334,7 +334,7 @@ const Training: React.FC = () => {
                     <div className="space-y-4">
                         <div className="h-64 bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-900 dark:to-indigo-900 rounded-lg flex flex-col items-center justify-center border border-blue-200 dark:border-blue-700">
                             <Icon name="document-text" className="w-20 h-20 text-blue-500 mb-4" />
-                            <h3 className="text-lg font-semibold text-blue-800 dark:text-blue-200 mb-2">Word Document</h3>
+                            <h3 className="text-base font-semibold text-blue-800 dark:text-blue-200 mb-2">Word Document</h3>
                             <p className="text-blue-600 dark:text-blue-300 text-center text-sm">
                                 {hasFile ? 'Click "Open" to view in your browser or "Download" for offline access' : 'No document file available'}
                             </p>
@@ -356,7 +356,7 @@ const Training: React.FC = () => {
                     <div className="space-y-4">
                         <div className="h-64 bg-gradient-to-br from-orange-50 to-red-100 dark:from-orange-900 dark:to-red-900 rounded-lg flex flex-col items-center justify-center border border-orange-200 dark:border-orange-700">
                             <Icon name="presentation-chart-bar" className="w-20 h-20 text-orange-500 mb-4" />
-                            <h3 className="text-lg font-semibold text-orange-800 dark:text-orange-200 mb-2">PowerPoint Presentation</h3>
+                            <h3 className="text-base font-semibold text-orange-800 dark:text-orange-200 mb-2">PowerPoint Presentation</h3>
                             <p className="text-orange-600 dark:text-orange-300 text-center text-sm">
                                 {hasFile ? 'Click "Open" to view in your browser or "Download" for offline access' : 'No presentation file available'}
                             </p>
@@ -381,8 +381,8 @@ const Training: React.FC = () => {
                 ];
                 return (
                     <div className="space-y-4">
-                        <h4 className="font-semibold text-lg text-gray-800 dark:text-gray-200">Quiz: Knowledge Check</h4>
-                        <p className="text-gray-700 dark:text-gray-300">What is the primary goal of our IT Security Policy?</p>
+                        <h4 className="font-semibold text-base text-gray-800 dark:text-gray-200">Quiz: Knowledge Check</h4>
+                        <p className="text-gray-700 dark:text-gray-300 text-sm">What is the primary goal of our IT Security Policy?</p>
                         <div className="space-y-2">
                             {quizOptions.map(option => (
                                <label key={option.id} className={`flex items-center p-3 border rounded-lg transition-colors ${getQuizOptionClass(option.id)}`}>
@@ -421,8 +421,8 @@ const Training: React.FC = () => {
         <div className="space-y-8">
             <div className="flex justify-between items-center">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Training & Orientation</h1>
-                    <p className="text-gray-600 dark:text-gray-300 mt-1">Complete your assigned training modules to learn about our company, tools, and processes.</p>
+                    <h1 className="text-xl font-bold text-gray-800 dark:text-white">Training & Orientation</h1>
+                    <p className="text-gray-600 dark:text-gray-300 mt-1 text-sm">Complete your assigned training modules to learn about our company, tools, and processes.</p>
                 </div>
                 {isAdmin && (
                     <Button onClick={() => setShowAddModal(true)}>
@@ -436,8 +436,8 @@ const Training: React.FC = () => {
                 <Card>
                     <div className="text-center py-12">
                         <Icon name="academic-cap" className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No training modules found</h3>
-                        <p className="text-gray-500 dark:text-gray-400">
+                        <h3 className="text-base font-medium text-gray-900 dark:text-gray-100 mb-2">No training modules found</h3>
+                        <p className="text-gray-500 dark:text-gray-400 text-sm">
                             {isAdmin ? 'Create training modules to assign to employees.' : 'No training modules have been assigned to you yet.'}
                         </p>
                     </div>
@@ -470,7 +470,7 @@ const Training: React.FC = () => {
                                     )}
                                 </div>
                             </div>
-                            <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 flex-grow">{module.title}</h3>
+                            <h3 className="text-base font-semibold text-gray-800 dark:text-gray-200 flex-grow">{module.title}</h3>
                             <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 mb-4">{module.duration}</p>
                             <div className="flex gap-2">
                                 <Button onClick={() => handleStartModule(module)} disabled={module.completed} className="flex-1">

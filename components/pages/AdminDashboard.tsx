@@ -146,8 +146,8 @@ const AdminDashboard: React.FC = () => {
     return (
         <div className="space-y-8">
             <div>
-                <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Admin Dashboard</h1>
-                <p className="text-gray-600 dark:text-gray-300 mt-1">Monitor and manage employee onboarding across the organization.</p>
+                <h1 className="text-xl font-bold text-gray-800 dark:text-white">Admin Dashboard</h1>
+                <p className="text-gray-600 dark:text-gray-300 mt-1 text-sm">Monitor and manage employee onboarding across the organization.</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -159,7 +159,7 @@ const AdminDashboard: React.FC = () => {
                             </div>
                             <div className="ml-4">
                                 <p className="text-sm text-gray-500 dark:text-gray-400">{stat.label}</p>
-                                <p className="text-2xl font-semibold text-gray-800 dark:text-gray-200">{stat.value}</p>
+                                <p className="text-xl font-semibold text-gray-800 dark:text-gray-200">{stat.value}</p>
                             </div>
                          </div>
                     </Card>
@@ -167,7 +167,7 @@ const AdminDashboard: React.FC = () => {
             </div>
 
             <Card>
-                <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-4">New Hire Onboarding Status</h2>
+                <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4">New Hire Onboarding Status</h2>
                 <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50 dark:bg-gray-700">
@@ -240,7 +240,7 @@ const AdminDashboard: React.FC = () => {
                                 alt="" 
                             />
                             <div>
-                                <h3 className="text-lg font-semibold">{userDetails.name}</h3>
+                                <h3 className="text-base font-semibold">{userDetails.name}</h3>
                                 <p className="text-gray-600">{userDetails.email}</p>
                                 <p className="text-sm text-gray-500">{userDetails.role} • {userDetails.team}</p>
                             </div>

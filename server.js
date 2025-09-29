@@ -639,6 +639,9 @@ app.post('/api/users/invite', verifyToken, requireRole(['Admin', 'HR']), async (
       [name, email, tempHashedPassword, role || 'Employee', avatar_url, team || null, job_title || null, start_date || null, 0, token, expiresAt.toISOString().slice(0, 19).replace('T', ' ')]
     );
     
+    // Send welcome notification
+    await notificationService.notifyWelcome(result.insertId, name);
+    
     // Send invitation email
     console.log('Attempting to send invitation email to:', email);
     try {
@@ -1413,6 +1416,16 @@ import mfaRoutes from './routes/mfa.js';
 // Use MFA routes
 app.use('/api/mfa', mfaRoutes);
 
+// Import Chat routes
+import chatRoutes from './routes/chat.js';
+
+// Import notification service
+import notificationService from './services/notificationService.js';
+import reminderService from './services/reminderService.js';
+
+// Use Chat routes
+app.use('/api/chat', chatRoutes);
+
 
 
 
@@ -1807,11 +1820,9 @@ app.post('/api/documents/templates/upload', verifyToken, requireRole(['Admin', '
 app.get('/api/documents/company', verifyToken, async (req, res) => {
   try {
     const [documents] = await db.execute(`
-      SELECT cd.*, u.name as uploaded_by_name 
-      FROM company_documents cd 
-      LEFT JOIN users u ON cd.uploaded_by = u.id 
-      WHERE cd.is_active = TRUE 
-      ORDER BY cd.category, cd.name
+      SELECT * FROM company_documents 
+      WHERE is_active = TRUE 
+      ORDER BY category, name
     `);
     res.json(documents);
   } catch (error) {
@@ -1901,6 +1912,12 @@ app.put('/api/documents/:id/status', verifyToken, requireRole(['Admin', 'HR']), 
       'UPDATE user_documents SET status = ?, action_date = CURDATE(), rejection_reason = ? WHERE id = ?',
       [status, rejectionReason || null, id]
     );
+    
+    // Get document info for notification
+    const [doc] = await db.execute('SELECT user_id, name FROM user_documents WHERE id = ?', [id]);
+    if (doc[0]) {
+      await notificationService.notifyDocumentStatus(doc[0].user_id, doc[0].name, status, rejectionReason);
+    }
     
     // Update assignment status if document is verified
     if (status === 'Verified') {
@@ -2446,4 +2463,7 @@ app.listen(PORT, '0.0.0.0', () => {
   
   // Run initial cleanup
   setTimeout(cleanupExpiredSessions, 5000);
+  
+  // Start reminder scheduler
+  reminderService.startScheduler();
 });

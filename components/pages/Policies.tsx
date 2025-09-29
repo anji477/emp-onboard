@@ -210,11 +210,11 @@ const Policies: React.FC = () => {
     );
 
     return (
-        <div className="space-y-8">
+        <div className="space-y-4">
             <div className="flex justify-between items-center">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Policies & Knowledge Base</h1>
-                    <p className="text-gray-600 dark:text-gray-300 mt-1">Access company policies and procedures.</p>
+                    <h1 className="text-xl font-bold text-gray-800 dark:text-white">Policies & Knowledge Base</h1>
+                    <p className="text-gray-600 dark:text-gray-300 text-xs">Access company policies and procedures.</p>
                 </div>
                 {isAdminOrHR && (
                     <Button onClick={() => setShowAddModal(true)}>
@@ -237,7 +237,7 @@ const Policies: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-1">
                     <Card>
-                        <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-4">Policies</h2>
+                        <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4">Policies</h2>
                         <input
                             type="text"
                             placeholder="Search policies..."
@@ -248,8 +248,8 @@ const Policies: React.FC = () => {
                         {filteredPolicies.length === 0 ? (
                             <div className="text-center py-8">
                                 <Icon name="document-magnifying-glass" className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No policies found</h3>
-                                <p className="text-gray-500 dark:text-gray-400">
+                                <h3 className="text-base font-medium text-gray-900 dark:text-gray-100 mb-2">No policies found</h3>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">
                                     {isAdminOrHR ? 'Create policies to share with employees.' : 'No policies are available yet.'}
                                 </p>
                             </div>
@@ -262,8 +262,8 @@ const Policies: React.FC = () => {
                                             onClick={() => setSelectedPolicy(policy)}
                                             className="w-full text-left"
                                         >
-                                            <p className="font-medium text-gray-800 dark:text-gray-200">{policy.title}</p>
-                                            <p className="text-sm text-gray-500 dark:text-gray-400">{policy.category}</p>
+                                            <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{policy.title}</p>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400">{policy.category}</p>
                                         </button>
                                         {isAdminOrHR && (
                                             <div className="flex gap-2 mt-2">
@@ -314,13 +314,13 @@ const Policies: React.FC = () => {
                     <Card>
                         {selectedPolicy ? (
                             <div>
-                                <h2 className="text-2xl font-bold text-gray-800 dark:text-white">{selectedPolicy.title}</h2>
-                                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 mb-4">{selectedPolicy.category}</p>
-                                <p className="text-gray-700 dark:text-gray-300 font-medium mb-4">{selectedPolicy.summary}</p>
+                                <h2 className="text-lg font-bold text-gray-800 dark:text-white">{selectedPolicy.title}</h2>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 mb-4">{selectedPolicy.category}</p>
+                                <p className="text-sm text-gray-700 dark:text-gray-300 font-medium mb-4">{selectedPolicy.summary}</p>
                                 {selectedPolicy.file_url ? (
                                     <div className="space-y-4">
                                         <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-2 text-sm text-gray-500">
+                                            <div className="flex items-center gap-2 text-xs text-gray-500">
                                                 <Icon name="document" className="w-4 h-4" />
                                                 <span>File: {selectedPolicy.file_name}</span>
                                                 {selectedPolicy.version && <span>• Version: {selectedPolicy.version}</span>}
@@ -330,14 +330,14 @@ const Policies: React.FC = () => {
                                                     href={selectedPolicy.file_url}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    className="text-indigo-600 hover:text-indigo-900 text-sm"
+                                                    className="text-indigo-600 hover:text-indigo-900 text-xs"
                                                 >
                                                     Open in New Tab
                                                 </a>
                                                 <a
                                                     href={selectedPolicy.file_url}
                                                     download={selectedPolicy.file_name}
-                                                    className="text-green-600 hover:text-green-900 text-sm"
+                                                    className="text-green-600 hover:text-green-900 text-xs"
                                                 >
                                                     Download
                                                 </a>
@@ -355,8 +355,8 @@ const Policies: React.FC = () => {
                                         ) : (
                                             <div className="border rounded-md p-8 text-center bg-gray-50">
                                                 <Icon name={selectedPolicy.file_type?.includes('presentation') ? 'presentation-chart-bar' : 'document'} className={`w-16 h-16 mx-auto mb-4 ${selectedPolicy.file_type?.includes('presentation') ? 'text-orange-500' : 'text-blue-500'}`} />
-                                                <h3 className="text-lg font-medium text-gray-900 mb-2">{selectedPolicy.file_name}</h3>
-                                                <p className="text-gray-600 mb-4">{selectedPolicy.file_type?.includes('presentation') ? 'PowerPoint Presentation' : 'Document'} - Click to download and view</p>
+                                                <h3 className="text-base font-medium text-gray-900 mb-2">{selectedPolicy.file_name}</h3>
+                                                <p className="text-sm text-gray-600 mb-4">{selectedPolicy.file_type?.includes('presentation') ? 'PowerPoint Presentation' : 'Document'} - Click to download and view</p>
                                                 <div className="flex justify-center gap-3">
                                                     <a
                                                         href={selectedPolicy.file_url}
@@ -381,15 +381,15 @@ const Policies: React.FC = () => {
                                         
                                         {selectedPolicy.content && (
                                             <div className="mt-6 pt-6 border-t">
-                                                <h4 className="text-sm font-medium text-gray-700 mb-2">Additional Notes:</h4>
-                                                <div className="prose max-w-none text-gray-600 dark:text-gray-400">
+                                                <h4 className="text-xs font-medium text-gray-700 mb-2">Additional Notes:</h4>
+                                                <div className="prose max-w-none text-sm text-gray-600 dark:text-gray-400">
                                                     <p>{selectedPolicy.content}</p>
                                                 </div>
                                             </div>
                                         )}
                                     </div>
                                 ) : (
-                                    <div className="prose max-w-none text-gray-600 dark:text-gray-400">
+                                    <div className="prose max-w-none text-sm text-gray-600 dark:text-gray-400">
                                         <p>{selectedPolicy.content}</p>
                                     </div>
                                 )}
@@ -397,7 +397,7 @@ const Policies: React.FC = () => {
                         ) : (
                             <div className="text-center py-16">
                                 <Icon name="document-magnifying-glass" className="h-12 w-12 mx-auto text-gray-400" />
-                                <p className="mt-4 text-gray-600 dark:text-gray-400">Select a policy to view its details.</p>
+                                <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">Select a policy to view its details.</p>
                             </div>
                         )}
                     </Card>
@@ -409,7 +409,7 @@ const Policies: React.FC = () => {
                 <Modal isOpen={true} onClose={() => { setShowAddModal(false); resetForm(); }} title="Add New Policy">
                     <div className="space-y-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Policy Type</label>
+                            <label className="block text-xs font-medium text-gray-700 mb-2">Policy Type</label>
                             <div className="flex gap-4">
                                 <label className="flex items-center">
                                     <input
@@ -494,7 +494,7 @@ const Policies: React.FC = () => {
                         
                         {uploadType === 'file' ? (
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">Policy File</label>
+                                <label className="block text-xs font-medium text-gray-700">Policy File</label>
                                 <input
                                     ref={fileInputRef}
                                     type="file"
@@ -505,7 +505,7 @@ const Policies: React.FC = () => {
                                 <p className="text-xs text-gray-500 mt-1">Supported formats: PDF, DOC, DOCX, PPT, PPTX (Max 10MB)</p>
                                 {selectedFile && (
                                     <div className="mt-3 p-3 bg-gray-50 rounded-md">
-                                        <p className="text-sm text-green-600 mb-2">Selected: {selectedFile.name}</p>
+                                        <p className="text-xs text-green-600 mb-2">Selected: {selectedFile.name}</p>
                                         <p className="text-xs text-gray-500">Size: {(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
                                         {selectedFile.type === 'application/pdf' && (
                                             <div className="mt-2">
@@ -545,7 +545,7 @@ const Policies: React.FC = () => {
                             </div>
                         ) : (
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">Content</label>
+                                <label className="block text-xs font-medium text-gray-700">Content</label>
                                 <textarea
                                     rows={6}
                                     value={formData.content}
@@ -611,12 +611,12 @@ const Policies: React.FC = () => {
                         
                         {editingPolicy?.file_url ? (
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Current File</label>
+                                <label className="block text-xs font-medium text-gray-700 mb-2">Current File</label>
                                 <div className="p-3 bg-gray-50 rounded-md border">
                                     <div className="flex items-center justify-between mb-2">
                                         <div className="flex items-center gap-2">
                                             <Icon name={editingPolicy.file_type?.includes('presentation') ? 'presentation-chart-bar' : 'document'} className={`w-5 h-5 ${editingPolicy.file_type?.includes('presentation') ? 'text-orange-500' : 'text-blue-500'}`} />
-                                            <span className="text-sm font-medium">{editingPolicy.file_name}</span>
+                                            <span className="text-xs font-medium">{editingPolicy.file_name}</span>
                                         </div>
                                         <div className="flex gap-2">
                                             <a
@@ -643,7 +643,7 @@ const Policies: React.FC = () => {
                         
                         {!editingPolicy?.file_url && (
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">Content</label>
+                                <label className="block text-xs font-medium text-gray-700">Content</label>
                                 <textarea
                                     rows={6}
                                     value={formData.content}

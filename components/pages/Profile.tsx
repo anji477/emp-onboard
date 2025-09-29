@@ -183,8 +183,8 @@ const Profile: React.FC = () => {
     return (
         <div className="space-y-8">
             <div>
-                <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Profile & Settings</h1>
-                <p className="text-gray-600 dark:text-gray-300 mt-1">Manage your personal information and application preferences.</p>
+                <h1 className="text-xl font-bold text-gray-800 dark:text-white">Profile & Settings</h1>
+                <p className="text-gray-600 dark:text-gray-300 mt-1 text-sm">Manage your personal information and application preferences.</p>
             </div>
 
             <Card>
@@ -223,7 +223,7 @@ const Profile: React.FC = () => {
                         </label>
                     </div>
                     <div className="w-full">
-                        <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-4">Personal Details</h2>
+                        <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4">Personal Details</h2>
                         <form className="space-y-6" onSubmit={handleProfileUpdate}>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
@@ -268,7 +268,7 @@ const Profile: React.FC = () => {
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <Card>
-                    <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-4">Change Password</h2>
+                    <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4">Change Password</h2>
                     <form className="space-y-4" onSubmit={handlePasswordUpdate}>
                          <div>
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Current Password</label>
@@ -395,7 +395,7 @@ const Profile: React.FC = () => {
                     </form>
                 </Card>
                 <Card>
-                    <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-4">Notification Preferences</h2>
+                    <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4">Notification Preferences</h2>
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
                             <span className="text-gray-700 dark:text-gray-300">Email Notifications</span>

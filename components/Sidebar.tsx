@@ -37,7 +37,7 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
     navItems.push({ to: '/settings', icon: 'cog-8-tooth', label: 'Settings' });
   }
 
-  const linkClasses = "flex items-center px-4 py-2.5 text-gray-600 dark:text-gray-300 hover:bg-indigo-100 dark:hover:bg-gray-700 hover:text-indigo-700 dark:hover:text-indigo-400 rounded-lg transition-colors duration-200";
+  const linkClasses = "flex items-center px-3 py-2 text-gray-600 dark:text-gray-300 hover:bg-indigo-100 dark:hover:bg-gray-700 hover:text-indigo-700 dark:hover:text-indigo-400 rounded-lg transition-colors duration-200";
   const activeLinkClasses = "bg-indigo-500 dark:bg-indigo-600 text-white hover:bg-indigo-500 dark:hover:bg-indigo-600 hover:text-white";
 
   return (
@@ -49,12 +49,12 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
       ></div>
 
       <aside
-        className={`fixed inset-y-0 left-0 bg-white dark:bg-gray-800 w-64 transform transition-all duration-300 ease-in-out z-30 lg:relative lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
+        className={`fixed inset-y-0 left-0 bg-white dark:bg-gray-800 w-56 h-screen transform transition-all duration-300 ease-in-out z-30 lg:relative lg:translate-x-0 flex flex-col ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
       >
-        <div className="flex items-center justify-center h-20 border-b border-gray-200 dark:border-gray-700">
-          <h1 className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">Onboardly</h1>
+        <div className="flex items-center justify-center h-16 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+          <h1 className="text-lg font-bold text-indigo-600 dark:text-indigo-400">Onboardly</h1>
         </div>
-        <nav className="mt-6 px-4">
+        <nav className="flex-1 overflow-y-auto mt-4 px-3">
           {navItems.map(item => (
             <NavLink
               key={item.to}
@@ -63,8 +63,8 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
               className={({ isActive }) => `${linkClasses} ${isActive ? activeLinkClasses : ''}`}
               onClick={() => setSidebarOpen(false)}
             >
-              <Icon name={item.icon} className="h-6 w-6 mr-3" />
-              <span className="font-medium">{item.label}</span>
+              <Icon name={item.icon} className="h-5 w-5 mr-2" />
+              <span className="text-xs font-medium">{item.label}</span>
             </NavLink>
           ))}
         </nav>

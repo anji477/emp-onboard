@@ -194,7 +194,7 @@ const AssignmentManager: React.FC = () => {
         </div>
       )}
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Assignment Manager</h1>
+        <h1 className="text-xl font-bold text-gray-800 dark:text-white">Assignment Manager</h1>
         <div className="flex gap-2">
           <Button onClick={() => setShowCreateTaskModal(true)}>
             <Icon name="plus" className="w-5 h-5 mr-2" />
@@ -214,7 +214,7 @@ const AssignmentManager: React.FC = () => {
 
       <div className="max-w-2xl">
         <Card>
-          <h2 className="text-xl font-semibold mb-4">Employees</h2>
+          <h2 className="text-lg font-semibold mb-4">Employees</h2>
           <div className="space-y-2 max-h-96 overflow-y-auto">
             {users.map(user => (
               <div
@@ -229,7 +229,7 @@ const AssignmentManager: React.FC = () => {
                   fetchExistingAssignments(user.id);
                 }}
               >
-                <p className="font-medium">{user.name}</p>
+                <p className="text-sm font-medium">{user.name}</p>
                 <p className="text-sm text-gray-500">{user.team} - {user.role}</p>
               </div>
             ))}
