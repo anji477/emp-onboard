@@ -18,7 +18,7 @@ dotenv.config();
 
 const app = express();
 app.use(cors({ credentials: true, origin: ['http://localhost:5173', 'http://192.168.1.140:5173'] })); // Allow requests from localhost and server IP
-app.use(express.json()); // Allow the server to understand JSON data
+app.use(express.json({ limit: '50mb' })); // Allow the server to understand JSON data with larger payload limit
 app.use(cookieParser()); // Parse cookies
 app.use((req, res, next) => {
   console.log(`${req.method} ${req.path}`);
@@ -216,11 +216,13 @@ app.get('/api/users/:userId/progress', verifyToken, async (req, res) => {
   }
 });
 
-// UPDATE task status
+// UPDATE task status or full task details
 app.put('/api/tasks/:id', verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const { status } = req.body;
+    const { status, title, category, due_date } = req.body;
+    
+    console.log('Updating task:', { id, body: req.body });
     
     const [existingTasks] = await db.execute('SELECT * FROM tasks WHERE id = ?', [id]);
     const existingTask = existingTasks[0];
@@ -229,23 +231,67 @@ app.put('/api/tasks/:id', verifyToken, async (req, res) => {
       return res.status(404).json({ message: 'Task not found' });
     }
     
-    await db.execute('UPDATE tasks SET status = ? WHERE id = ?', [status, id]);
+    // Check permissions
+    if (req.user.role !== 'Admin' && req.user.role !== 'HR' && existingTask.user_id !== req.user.id) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
     
-    // Recalculate user progress
-    const [allUserTasks] = await db.execute('SELECT status FROM tasks WHERE user_id = ?', [existingTask.user_id]);
-    const total = allUserTasks.length;
-    const completed = allUserTasks.filter(task => 
-      task.status === 'Completed' || task.status === 'InProgress'
-    ).length;
-    const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
-    await db.execute('UPDATE users SET onboarding_progress = ? WHERE id = ?', [progress, existingTask.user_id]);
+    // Build update query dynamically
+    const updates = [];
+    const values = [];
+    
+    if (title !== undefined) {
+      updates.push('title = ?');
+      values.push(title);
+    }
+    if (category !== undefined) {
+      updates.push('category = ?');
+      values.push(category);
+    }
+    if (due_date !== undefined) {
+      updates.push('due_date = ?');
+      values.push(due_date);
+    }
+    if (status !== undefined) {
+      updates.push('status = ?');
+      values.push(status);
+    }
+    
+    if (updates.length === 0) {
+      return res.status(400).json({ message: 'No fields to update' });
+    }
+    
+    values.push(id);
+    const query = `UPDATE tasks SET ${updates.join(', ')} WHERE id = ?`;
+    
+    console.log('Executing query:', query, 'with values:', values);
+    await db.execute(query, values);
     
     const [updatedTasks] = await db.execute('SELECT * FROM tasks WHERE id = ?', [id]);
     const updatedTask = updatedTasks[0];
     
-    res.json(updatedTask);
+    console.log('Task updated successfully:', updatedTask);
+    res.json({ message: 'Task updated successfully', task: updatedTask });
   } catch (error) {
     console.error('Error updating task:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// DELETE task
+app.delete('/api/tasks/:id', verifyToken, requireRole(['Admin', 'HR']), async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const [existingTasks] = await db.execute('SELECT * FROM tasks WHERE id = ?', [id]);
+    if (existingTasks.length === 0) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+    
+    await db.execute('DELETE FROM tasks WHERE id = ?', [id]);
+    res.json({ message: 'Task deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting task:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -1104,6 +1150,32 @@ app.get('/api/init-settings', async (req, res) => {
   }
 });
 
+// Apply employee_id migration
+app.get('/api/migrate-employee-id', verifyToken, requireRole(['Admin']), async (req, res) => {
+  try {
+    // Check if employee_id column exists
+    const [columns] = await db.execute("SHOW COLUMNS FROM users LIKE 'employee_id'");
+    
+    if (columns.length === 0) {
+      // Add employee_id column
+      await db.execute('ALTER TABLE users ADD COLUMN employee_id VARCHAR(50) UNIQUE AFTER id');
+      
+      // Add index
+      await db.execute('CREATE INDEX idx_employee_id ON users(employee_id)');
+      
+      // Update existing users with auto-generated employee IDs
+      await db.execute("UPDATE users SET employee_id = CONCAT('EMP', LPAD(id, 3, '0')) WHERE employee_id IS NULL");
+      
+      res.json({ message: 'Employee ID migration completed successfully' });
+    } else {
+      res.json({ message: 'Employee ID column already exists' });
+    }
+  } catch (error) {
+    console.error('Error applying employee ID migration:', error);
+    res.status(500).json({ message: 'Migration failed', error: error.message });
+  }
+});
+
 // Initialize database tables - Enhanced
 app.get('/api/init-db', async (req, res) => {
   try {
@@ -1282,8 +1354,19 @@ app.put('/api/settings', verifyToken, requireRole(['Admin']), updateSettings);
 app.post('/api/test-email', verifyToken, requireRole(['Admin']), async (req, res) => {
   try {
     const { testEmail } = req.body;
+    
+    // Get email settings from database
+    const [emailSettings] = await db.execute(
+      'SELECT setting_value FROM organization_settings WHERE setting_key = "email_settings"'
+    );
+    
+    let config = null;
+    if (emailSettings.length > 0) {
+      config = JSON.parse(emailSettings[0].setting_value);
+    }
+    
     const { testEmailConfig } = await import('./services/emailService.js');
-    const result = await testEmailConfig(testEmail);
+    const result = await testEmailConfig(testEmail, config);
     res.json(result);
   } catch (error) {
     console.error('Email test error:', error);
@@ -2140,7 +2223,7 @@ app.post('/api/assignments', verifyToken, requireRole(['Admin', 'HR']), async (r
     for (const item of items) {
       await db.execute(
         'INSERT INTO user_assignments (user_id, item_type, item_id, assigned_by, due_date, is_required) VALUES (?, ?, ?, ?, ?, ?)',
-        [userId, item.type, item.id, req.user.id, dueDate, true]
+        [userId, item.type, item.id, req.user.id, dueDate && dueDate.trim() !== '' ? dueDate : null, true]
       );
     }
     
@@ -2286,6 +2369,41 @@ const cleanupExpiredSessions = async () => {
 // Run cleanup based on environment variable
 const cleanupInterval = (parseInt(process.env.MFA_CLEANUP_INTERVAL_HOURS) || 1) * 60 * 60 * 1000;
 setInterval(cleanupExpiredSessions, cleanupInterval);
+
+// Import and setup bulk upload functionality
+import BulkUploadController from './controllers/bulkUploadController.js';
+const bulkUploadController = new BulkUploadController(db);
+
+// Configure multer for Excel files
+const excelUpload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, uploadsDir);
+    },
+    filename: (req, file, cb) => {
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      cb(null, 'bulk-employees-' + uniqueSuffix + path.extname(file.originalname));
+    }
+  }),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = /\.(xlsx|xls)$/i;
+    if (allowedTypes.test(file.originalname)) {
+      return cb(null, true);
+    } else {
+      return cb(new Error('Only Excel files (.xlsx, .xls) are allowed'));
+    }
+  }
+});
+
+// Bulk employee upload routes
+app.get('/api/employees/template', verifyToken, requireRole(['Admin', 'HR']), (req, res) => {
+  bulkUploadController.downloadTemplate(req, res);
+});
+
+app.post('/api/employees/bulk-upload', verifyToken, requireRole(['Admin', 'HR']), excelUpload.single('employeeFile'), (req, res) => {
+  bulkUploadController.processBulkUpload(req, res);
+});
 
 // --- Start the server ---
 const PORT = process.env.PORT || 3001;

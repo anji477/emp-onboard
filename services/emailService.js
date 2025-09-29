@@ -9,7 +9,7 @@ let transporter = null;
 
 const createTransporter = () => {
   if (!transporter) {
-    transporter = nodemailer.createTransporter({
+    transporter = nodemailer.createTransport({
       host: process.env.EMAIL_HOST || 'smtp.gmail.com',
       port: parseInt(process.env.EMAIL_PORT) || 587,
       secure: false,
@@ -166,21 +166,40 @@ export const sendResetEmail = async (email, name, token) => {
   }
 };
 
-export const testEmailConfig = async (testEmail) => {
+export const testEmailConfig = async (testEmail, emailSettings = null) => {
   try {
-    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-      return { success: false, message: 'Email credentials not configured' };
+    // Use provided settings or fall back to environment variables
+    const config = emailSettings || {
+      smtp_host: process.env.EMAIL_HOST || 'smtp.gmail.com',
+      smtp_port: parseInt(process.env.EMAIL_PORT) || 587,
+      smtp_user: process.env.EMAIL_USER,
+      smtp_password: process.env.EMAIL_PASS,
+      from_email: process.env.EMAIL_USER,
+      from_name: process.env.MFA_SERVICE_NAME || 'Employee Portal'
+    };
+
+    if (!config.smtp_user || !config.smtp_password) {
+      return { success: false, message: 'Email credentials not configured. For Gmail: 1) Enable 2FA, 2) Generate App Password, 3) Use App Password (not regular password)' };
     }
 
-    const transporter = createTransporter();
+    const transporter = nodemailer.createTransport({
+      host: config.smtp_host,
+      port: config.smtp_port,
+      secure: config.smtp_port === 465,
+      auth: {
+        user: config.smtp_user,
+        pass: config.smtp_password
+      }
+    });
     
     // Verify connection
     await transporter.verify();
     
-    // Send test email
-    await transporter.sendMail({
-      from: `"${process.env.MFA_SERVICE_NAME || 'Employee Portal'}" <${process.env.EMAIL_USER}>`,
-      to: testEmail,
+    // Send test email if testEmail provided, otherwise just verify connection
+    if (testEmail) {
+      await transporter.sendMail({
+        from: `"${config.from_name}" <${config.from_email}>`,
+        to: testEmail,
       subject: 'Email Configuration Test',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -194,9 +213,11 @@ export const testEmailConfig = async (testEmail) => {
           </div>
         </div>
       `
-    });
-    
-    return { success: true, message: 'Test email sent successfully' };
+      });
+      return { success: true, message: 'Test email sent successfully' };
+    } else {
+      return { success: true, message: 'SMTP connection verified successfully' };
+    }
   } catch (error) {
     console.error('Email test failed:', error);
     return { success: false, message: error.message };

@@ -7,6 +7,7 @@ import Button from '../common/Button';
 import Modal from '../common/Modal';
 import Loader from '../common/Loader';
 import { UserContext } from '../../App';
+import { formatDateForInput, formatDateForDisplay } from '../../utils/dateUtils';
 
 const getStatusBadge = (status: TaskStatus) => {
   switch (status) {
@@ -19,11 +20,11 @@ const getStatusBadge = (status: TaskStatus) => {
   }
 };
 
-const TaskItem: React.FC<{ task: Task, onStatusChange: (id: string, status: TaskStatus) => void, isAdminView?: boolean }> = ({ task, onStatusChange, isAdminView = false }) => {
+const TaskItem: React.FC<{ task: Task, onStatusChange: (id: string, status: TaskStatus) => void, isAdminView?: boolean, onEdit?: (task: Task) => void, onDelete?: (id: string) => void }> = ({ task, onStatusChange, isAdminView = false, onEdit, onDelete }) => {
     const isCompleted = task.status === TaskStatus.Completed;
     
     if (isAdminView) {
-        // Admin/HR view - read-only list without checkboxes or status badges
+        // Admin/HR view with edit/delete buttons
         return (
             <div className="flex items-center justify-between p-4 bg-white dark:bg-gray-700 rounded-lg shadow-sm hover:shadow-md transition-shadow">
                 <div className="flex items-center">
@@ -37,6 +38,22 @@ const TaskItem: React.FC<{ task: Task, onStatusChange: (id: string, status: Task
                 </div>
                 <div className="flex items-center space-x-4">
                     <span className="text-sm text-gray-500 dark:text-gray-400 hidden md:block">{task.category}</span>
+                    <div className="flex items-center space-x-2">
+                        <button
+                            onClick={() => onEdit?.(task)}
+                            className="text-indigo-600 hover:text-indigo-900 p-1"
+                            title="Edit task"
+                        >
+                            <Icon name="pencil" className="w-4 h-4" />
+                        </button>
+                        <button
+                            onClick={() => onDelete?.(task.id)}
+                            className="text-red-600 hover:text-red-900 p-1"
+                            title="Delete task"
+                        >
+                            <Icon name="trash" className="w-4 h-4" />
+                        </button>
+                    </div>
                 </div>
             </div>
         );
@@ -86,6 +103,15 @@ const Tasks: React.FC = () => {
     });
     const [addingCategory, setAddingCategory] = useState(false);
     const [categoryError, setCategoryError] = useState('');
+    const [editingTask, setEditingTask] = useState<Task | null>(null);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+    const [editForm, setEditForm] = useState({
+        title: '',
+        category: '',
+        dueDate: ''
+    });
+    const [notification, setNotification] = useState('');
+    const [updating, setUpdating] = useState(false);
     const auth = useContext(UserContext);
     const isAdminOrHR = auth?.user?.role === 'Admin' || auth?.user?.role === 'HR';
 
@@ -110,15 +136,7 @@ const Tasks: React.FC = () => {
         }
     };
 
-    const formatDate = (dateString: string) => {
-        if (!dateString) return '2024-01-15';
-        const date = new Date(dateString);
-        return date.toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric'
-        });
-    };
+
 
     const fetchTasks = async () => {
         try {
@@ -143,7 +161,7 @@ const Tasks: React.FC = () => {
                     id: task.id.toString(),
                     title: task.title,
                     status: task.status as TaskStatus,
-                    dueDate: formatDate(task.due_date),
+                    dueDate: formatDateForDisplay(task.due_date),
                     category: task.category || 'General'
                 }));
                 
@@ -171,7 +189,7 @@ const Tasks: React.FC = () => {
                         id: `assigned-${assignment.item_id}`,
                         title: assignment.item_title || 'Assigned Task',
                         status: assignment.status === 'completed' ? TaskStatus.Completed : TaskStatus.ToDo,
-                        dueDate: formatDate(assignment.due_date),
+                        dueDate: formatDateForDisplay(assignment.due_date),
                         category: assignment.item_category || 'General'
                     }));
                 console.log('Filtered assigned tasks:', assignedTasks);
@@ -182,7 +200,7 @@ const Tasks: React.FC = () => {
                         id: task.id.toString(),
                         title: task.title,
                         status: task.status as TaskStatus,
-                        dueDate: formatDate(task.due_date),
+                        dueDate: formatDateForDisplay(task.due_date),
                         category: task.category || 'General'
                     })),
                     ...assignedTasks
@@ -301,7 +319,21 @@ const Tasks: React.FC = () => {
                         <h2 className="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-4">{category}</h2>
                         <div className="space-y-3">
                         {tasksInCategory.map(task => (
-                            <TaskItem key={task.id} task={task} onStatusChange={handleStatusChange} isAdminView={isAdminOrHR} />
+                            <TaskItem 
+                                key={task.id} 
+                                task={task} 
+                                onStatusChange={handleStatusChange} 
+                                isAdminView={isAdminOrHR}
+                                onEdit={isAdminOrHR ? (task) => {
+                                    setEditingTask(task);
+                                    setEditForm({
+                                        title: task.title,
+                                        category: task.category,
+                                        dueDate: formatDateForInput(task.dueDate)
+                                    });
+                                } : undefined}
+                                onDelete={isAdminOrHR ? (id) => setShowDeleteConfirm(id) : undefined}
+                            />
                         ))}
                         </div>
                     </Card>
@@ -583,6 +615,165 @@ const Tasks: React.FC = () => {
                         </div>
                     </div>
                 </Modal>
+            )}
+
+            {/* Edit Task Modal */}
+            {editingTask && (
+                <Modal isOpen={true} onClose={() => {
+                    setEditingTask(null);
+                    setUpdating(false);
+                }} title="Edit Task">
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                            <input
+                                type="text"
+                                value={editForm.title}
+                                onChange={(e) => setEditForm({...editForm, title: e.target.value})}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                                placeholder="Task title"
+                                required
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                            <select
+                                value={editForm.category}
+                                onChange={(e) => setEditForm({...editForm, category: e.target.value})}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                                required
+                            >
+                                <option value="">Select Category</option>
+                                {categories.map(cat => (
+                                    <option key={cat.id} value={cat.name}>{cat.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
+                            <input
+                                type="date"
+                                value={editForm.dueDate}
+                                onChange={(e) => setEditForm({...editForm, dueDate: e.target.value})}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+                            />
+                        </div>
+                        <div className="flex justify-end gap-2 pt-4">
+                            <Button 
+                                variant="secondary" 
+                                onClick={() => {
+                                    setEditingTask(null);
+                                    setUpdating(false);
+                                }}
+                                disabled={updating}
+                            >
+                                Cancel
+                            </Button>
+                            <Button 
+                                onClick={async () => {
+                                    if (!editForm.title.trim() || !editForm.category) {
+                                        setNotification('Please fill in all required fields');
+                                        setTimeout(() => setNotification(''), 3000);
+                                        return;
+                                    }
+                                    
+                                    try {
+                                        setUpdating(true);
+                                        console.log('Updating task with data:', {
+                                            title: editForm.title,
+                                            category: editForm.category,
+                                            due_date: editForm.dueDate
+                                        });
+                                        
+                                        const response = await fetch(`/api/tasks/${editingTask.id}`, {
+                                            method: 'PUT',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            credentials: 'include',
+                                            body: JSON.stringify({
+                                                title: editForm.title,
+                                                category: editForm.category,
+                                                due_date: editForm.dueDate
+                                            })
+                                        });
+                                        
+                                        const result = await response.json();
+                                        console.log('Update response:', result);
+                                        
+                                        if (response.ok) {
+                                            setNotification('Task updated successfully!');
+                                            setEditingTask(null);
+                                            fetchTasks();
+                                            setTimeout(() => setNotification(''), 3000);
+                                        } else {
+                                            setNotification(result.message || 'Failed to update task');
+                                            setTimeout(() => setNotification(''), 3000);
+                                        }
+                                    } catch (error) {
+                                        console.error('Error updating task:', error);
+                                        setNotification('Error updating task. Please try again.');
+                                        setTimeout(() => setNotification(''), 3000);
+                                    } finally {
+                                        setUpdating(false);
+                                    }
+                                }}
+                                disabled={updating || !editForm.title.trim() || !editForm.category}
+                            >
+                                {updating ? (
+                                    <div className="flex items-center">
+                                        <Loader size="sm" color="white" />
+                                        <span className="ml-2">Updating...</span>
+                                    </div>
+                                ) : 'Update Task'}
+                            </Button>
+                        </div>
+                    </div>
+                </Modal>
+            )}
+
+            {/* Delete Confirmation Modal */}
+            {showDeleteConfirm && (
+                <Modal isOpen={true} onClose={() => setShowDeleteConfirm(null)} title="Delete Task">
+                    <div className="space-y-4">
+                        <div className="flex items-center space-x-3">
+                            <Icon name="exclamation-triangle" className="h-6 w-6 text-red-600" />
+                            <p className="text-gray-700">Are you sure you want to delete this task? This action cannot be undone.</p>
+                        </div>
+                        <div className="flex justify-end gap-2">
+                            <Button variant="secondary" onClick={() => setShowDeleteConfirm(null)}>Cancel</Button>
+                            <Button 
+                                onClick={async () => {
+                                    try {
+                                        const response = await fetch(`/api/tasks/${showDeleteConfirm}`, {
+                                            method: 'DELETE',
+                                            credentials: 'include'
+                                        });
+                                        if (response.ok) {
+                                            setShowDeleteConfirm(null);
+                                            fetchTasks();
+                                        } else {
+                                            alert('Failed to delete task');
+                                        }
+                                    } catch (error) {
+                                        alert('Error deleting task');
+                                    }
+                                }}
+                                className="bg-red-600 hover:bg-red-700 text-white"
+                            >
+                                Delete Task
+                            </Button>
+                        </div>
+                    </div>
+                </Modal>
+            )}
+            {/* Notification */}
+            {notification && (
+                <div className="fixed top-4 right-4 z-50">
+                    <div className={`px-4 py-2 rounded-md shadow-lg ${
+                        notification.includes('success') ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+                    }`}>
+                        {notification}
+                    </div>
+                </div>
             )}
         </div>
     );

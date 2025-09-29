@@ -4,6 +4,7 @@ import Card from '../common/Card';
 import Button from '../common/Button';
 import Icon from '../common/Icon';
 import Modal from '../common/Modal';
+import BulkEmployeeUpload from './BulkEmployeeUpload';
 
 interface User {
   id: number;
@@ -21,6 +22,7 @@ const UserManagement: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [showBulkUpload, setShowBulkUpload] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [notification, setNotification] = useState('');
   const [deleteUser, setDeleteUser] = useState<User | null>(null);
@@ -219,6 +221,13 @@ const UserManagement: React.FC = () => {
           <p className="text-gray-600 dark:text-gray-300 mt-1">Manage employees and administrators.</p>
         </div>
         <div className="flex gap-2">
+          <button 
+            onClick={() => setShowBulkUpload(true)}
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+          >
+            <Icon name="upload" className="w-4 h-4 mr-2" />
+            Bulk Upload
+          </button>
           <button 
             onClick={() => setShowInviteModal(true)}
             className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
@@ -525,6 +534,21 @@ const UserManagement: React.FC = () => {
               </button>
             </div>
           </div>
+        </Modal>
+      )}
+      
+      {/* Bulk Upload Modal */}
+      {showBulkUpload && (
+        <Modal 
+          isOpen={true} 
+          onClose={() => {
+            setShowBulkUpload(false);
+            fetchUsers(); // Refresh users list after bulk upload
+          }} 
+          title="Bulk Employee Upload"
+          size="large"
+        >
+          <BulkEmployeeUpload />
         </Modal>
       )}
       

@@ -6,9 +6,24 @@ interface ModalProps {
   onClose: () => void;
   title: string;
   children: React.ReactNode;
+  size?: 'small' | 'medium' | 'large' | 'xl';
 }
 
-const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
+const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 'medium' }) => {
+  const getSizeClasses = () => {
+    switch (size) {
+      case 'small':
+        return 'max-w-md';
+      case 'medium':
+        return 'max-w-lg';
+      case 'large':
+        return 'max-w-4xl';
+      case 'xl':
+        return 'max-w-6xl';
+      default:
+        return 'max-w-lg';
+    }
+  };
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -32,7 +47,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
       onClick={onClose}
     >
       <div
-        className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-lg overflow-hidden transform transition-all duration-300"
+        className={`relative bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full ${getSizeClasses()} overflow-hidden transform transition-all duration-300`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700">
