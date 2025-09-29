@@ -513,9 +513,9 @@ app.put('/api/users/:id/password', async (req, res) => {
       return res.status(400).json({ message: 'Current password is incorrect' });
     }
     
-    // Hash new password and update
+    // Hash new password and update with timestamp
     const hashedNewPassword = await bcrypt.hash(newPassword, 12);
-    await db.execute('UPDATE users SET password_hash = ? WHERE id = ?', [hashedNewPassword, id]);
+    await db.execute('UPDATE users SET password_hash = ?, password_changed_at = CURRENT_TIMESTAMP WHERE id = ?', [hashedNewPassword, id]);
     
     console.log(`Password updated for user ${id}`);
     res.json({ message: 'Password updated successfully' });
@@ -645,7 +645,17 @@ app.post('/api/users/invite', verifyToken, requireRole(['Admin', 'HR']), async (
       const { sendInvitationEmail } = await import('./services/emailService.js');
       console.log('Email service imported successfully');
       
-      const emailSent = await sendInvitationEmail(email, name, token);
+      // Get email settings from database
+      const [emailSettings] = await db.execute(
+        'SELECT setting_value FROM organization_settings WHERE setting_key = "email_settings"'
+      );
+      
+      let config = null;
+      if (emailSettings.length > 0) {
+        config = JSON.parse(emailSettings[0].setting_value);
+      }
+      
+      const emailSent = await sendInvitationEmail(email, name, token, config);
       console.log('Email send result:', emailSent);
       
       const [newUsers] = await db.execute('SELECT * FROM users WHERE id = ?', [result.insertId]);
@@ -905,9 +915,9 @@ app.post('/api/auth/change-password', verifyToken, async (req, res) => {
       return res.status(400).json({ message: 'Password is too common and easily compromised. Please choose a stronger password.' });
     }
     
-    // Hash new password and update
+    // Hash new password and update with timestamp
     const hashedNewPassword = await bcrypt.hash(newPassword, 12);
-    await db.execute('UPDATE users SET password_hash = ? WHERE id = ?', [hashedNewPassword, req.user.id]);
+    await db.execute('UPDATE users SET password_hash = ?, password_changed_at = CURRENT_TIMESTAMP WHERE id = ?', [hashedNewPassword, req.user.id]);
     
     // Store current password in history
     await db.execute(
@@ -953,6 +963,29 @@ app.post('/api/login', async (req, res) => {
     
     if (!isValidPassword) {
       return res.status(401).json({ message: 'Invalid email or password' });
+    }
+    
+    // Check password expiry
+    const [passwordPolicy] = await db.execute(
+      'SELECT setting_value FROM organization_settings WHERE setting_key = "password_policy"'
+    );
+    
+    if (passwordPolicy.length > 0) {
+      const policy = JSON.parse(passwordPolicy[0].setting_value);
+      if (policy.expiryDays && policy.expiryDays > 0) {
+        // Check password age
+        const passwordDate = user.password_changed_at;
+        if (passwordDate) {
+          const daysSinceChange = Math.floor((new Date() - new Date(passwordDate)) / (1000 * 60 * 60 * 24));
+          if (daysSinceChange >= policy.expiryDays) {
+            return res.json({
+              requiresPasswordChange: true,
+              userEmail: user.email,
+              message: `Your password has expired after ${policy.expiryDays} days. Please change it to continue.`
+            });
+          }
+        }
+      }
     }
     
     // Check if MFA is required

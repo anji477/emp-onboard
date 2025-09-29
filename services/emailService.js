@@ -69,18 +69,36 @@ export const sendMfaEmail = async (email, otpCode) => {
   }
 };
 
-export const sendInvitationEmail = async (email, name, token) => {
+export const sendInvitationEmail = async (email, name, token, emailSettings = null) => {
   try {
-    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    // Use provided settings or fall back to environment variables
+    const config = emailSettings || {
+      smtp_host: process.env.EMAIL_HOST || 'smtp.gmail.com',
+      smtp_port: parseInt(process.env.EMAIL_PORT) || 587,
+      smtp_user: process.env.EMAIL_USER,
+      smtp_password: process.env.EMAIL_PASS,
+      from_email: process.env.EMAIL_USER,
+      from_name: process.env.MFA_SERVICE_NAME || 'Employee Portal'
+    };
+
+    if (!config.smtp_user || !config.smtp_password) {
       console.log(`Invitation token for ${email}: ${token} (Email not configured)`);
       return false;
     }
 
-    const transporter = createTransporter();
+    const transporter = nodemailer.createTransport({
+      host: config.smtp_host,
+      port: config.smtp_port,
+      secure: config.smtp_port === 465,
+      auth: {
+        user: config.smtp_user,
+        pass: config.smtp_password
+      }
+    });
     const inviteUrl = `${process.env.BASE_URL || 'http://localhost:5173'}/setup-password/${token}`;
     
     const mailOptions = {
-      from: `"${process.env.MFA_SERVICE_NAME || 'Employee Portal'}" <${process.env.EMAIL_USER}>`,
+      from: `"${config.from_name}" <${config.from_email}>`,
       to: email,
       subject: 'Welcome! Complete Your Account Setup',
       html: `
