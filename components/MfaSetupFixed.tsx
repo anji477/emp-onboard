@@ -1,462 +1,246 @@
 import React, { useState, useEffect } from 'react';
-import { QRCodeSVG } from 'qrcode.react';
 
 interface MfaSetupData {
-  sessionToken: string;
+  sessionId: string;
+  qrCode: string;
   secret: string;
-  qrCodeUrl: string;
-  accountName: string;
-  issuer: string;
-  userEmail: string;
+  expiresIn: number;
 }
 
-interface MfaSetupProps {
-  sessionToken?: string;
-  userEmail?: string;
-  onSuccess?: (userData: any) => void;
-  isRequired?: boolean;
+interface ApiResponse {
+  success: boolean;
+  message?: string;
+  requireRestart?: boolean;
+  sessionId?: string;
+  qrCode?: string;
+  secret?: string;
+  expiresIn?: number;
+  backupCodes?: string[];
 }
 
-const MfaSetup: React.FC<MfaSetupProps> = ({ 
-  sessionToken, 
-  userEmail, 
-  onSuccess, 
-  isRequired = false 
-}) => {
-  const [step, setStep] = useState(1);
+const MfaSetupFixed: React.FC = () => {
   const [setupData, setSetupData] = useState<MfaSetupData | null>(null);
   const [verificationCode, setVerificationCode] = useState('');
-  const [backupCodes, setBackupCodes] = useState<string[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [sessionExpired, setSessionExpired] = useState(false);
-  const [currentSessionToken, setCurrentSessionToken] = useState(sessionToken);
+  const [backupCodes, setBackupCodes] = useState<string[]>([]);
+  const [setupComplete, setSetupComplete] = useState(false);
 
-  useEffect(() => {
-    if (isRequired && sessionToken) {
-      setCurrentSessionToken(sessionToken);
-      validateSession();
-    } else if (userEmail) {
-      startMfaSetup();
-    }
-  }, [isRequired, sessionToken, userEmail]);
-
-  const selectAuthenticatorMethod = async () => {
-    setLoading(true);
+  const initiateMfaSetup = async () => {
+    setIsLoading(true);
     setError('');
+    setSessionExpired(false);
     
     try {
-      const response = await fetch('/api/mfa/complete-setup', {
+      const response = await fetch('/api/mfa/setup', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ 
-          sessionToken: currentSessionToken,
-          method: 'authenticator'
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const data: ApiResponse = await response.json();
+
+      if (data.success && data.sessionId && data.qrCode) {
+        setSetupData({
+          sessionId: data.sessionId,
+          qrCode: data.qrCode,
+          secret: data.secret || '',
+          expiresIn: data.expiresIn || 1800
+        });
+      } else {
+        setError(data.message || 'Failed to initiate MFA setup');
+      }
+    } catch (err) {
+      setError('Network error occurred');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const verifyMfaCode = async () => {
+    if (!verificationCode || !setupData) return;
+
+    setIsLoading(true);
+    setError('');
+
+    try {
+      const response = await fetch('/api/mfa/verify-setup', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          sessionId: setupData.sessionId,
+          code: verificationCode
         })
       });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setSetupData(prev => ({ ...prev, ...data }));
-        setStep(2);
+
+      const data: ApiResponse = await response.json();
+
+      if (data.success) {
+        setBackupCodes(data.backupCodes || []);
+        setSetupComplete(true);
       } else {
-        const error = await response.json();
-        if (error.expired) {
+        if (data.requireRestart) {
           setSessionExpired(true);
+        } else {
+          setError(data.message || 'Invalid verification code');
         }
-        setError(error.message || 'Failed to setup authenticator');
       }
-    } catch (error) {
+    } catch (err) {
       setError('Network error occurred');
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  const startMfaSetup = async () => {
-    setLoading(true);
-    setError('');
-    
-    try {
-      const response = await fetch('/api/mfa/start-setup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ userEmail })
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setSetupData(data);
-        setCurrentSessionToken(data.sessionToken);
-        setSessionExpired(false);
-      } else {
-        const error = await response.json();
-        setError(error.message || 'Failed to start MFA setup');
-      }
-    } catch (error) {
-      setError('Network error occurred');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const validateSession = async () => {
-    if (!currentSessionToken) {
-      setSessionExpired(true);
-      return;
-    }
-    
-    try {
-      const response = await fetch('/api/mfa/validate-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ sessionToken: currentSessionToken })
-      });
-      
-      const data = await response.json();
-      
-      if (!data.valid || data.expired) {
-        setSessionExpired(true);
-        setError('Setup session has expired');
-      } else {
-        setSessionExpired(false);
-        setError('');
-      }
-    } catch (error) {
-      setSessionExpired(true);
-      setError('Session validation failed');
-    }
-  };
-
-  const restartSetup = async () => {
-    setLoading(true);
+  const restartMfaSetup = async () => {
+    setIsLoading(true);
     setError('');
     
     try {
       const response = await fetch('/api/mfa/restart-setup', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({
-          sessionToken: currentSessionToken,
-          userEmail: userEmail
-        })
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setSetupData(data);
-        setCurrentSessionToken(data.sessionToken);
+
+      const data: ApiResponse = await response.json();
+
+      if (data.success && data.sessionId && data.qrCode) {
+        setSetupData({
+          sessionId: data.sessionId,
+          qrCode: data.qrCode,
+          secret: data.secret || '',
+          expiresIn: data.expiresIn || 1800
+        });
         setSessionExpired(false);
-        setError('');
-        setStep(1);
-        setSuccess('New QR code generated!');
-        setTimeout(() => setSuccess(''), 3000);
+        setVerificationCode('');
       } else {
-        const error = await response.json();
-        if (error.requiresLogin) {
-          window.location.href = '/login';
-        } else {
-          setError(error.message || 'Failed to restart setup');
-        }
+        setError(data.message || 'Failed to restart MFA setup');
       }
-    } catch (error) {
+    } catch (err) {
       setError('Network error occurred');
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  const verifySetup = async () => {
-    if (!verificationCode || !/^\d{6}$/.test(verificationCode)) {
-      setError('Please enter a valid 6-digit code');
-      return;
-    }
+  useEffect(() => {
+    initiateMfaSetup();
+  }, []);
 
-    setLoading(true);
-    setError('');
-    
-    try {
-      const response = await fetch('/api/mfa/verify-setup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          sessionToken: currentSessionToken,
-          code: verificationCode
-        })
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setBackupCodes(data.backupCodes);
-        setSuccess('MFA setup completed successfully!');
-        setStep(4);
-        
-        if (onSuccess) {
-          setTimeout(() => {
-            onSuccess(null);
-          }, 2000);
-        }
-      } else {
-        const error = await response.json();
-        if (error.expired) {
-          setSessionExpired(true);
-          setError('Setup session has expired');
-        } else {
-          setError(error.message || 'Invalid verification code');
-        }
-      }
-    } catch (error) {
-      setError('Network error occurred');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    setSuccess('Copied to clipboard!');
-    setTimeout(() => setSuccess(''), 2000);
-  };
-
-  if (loading && !setupData) {
+  if (setupComplete) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="max-w-md mx-auto bg-white rounded-lg shadow-md p-6">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Setting up MFA...</p>
+          <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
+            <svg className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-4">MFA Setup Complete!</h3>
+          <p className="text-sm text-gray-600 mb-4">Save these backup codes in a secure location:</p>
+          <div className="bg-gray-50 p-4 rounded-md mb-4">
+            {backupCodes.map((code, index) => (
+              <div key={index} className="font-mono text-sm">{code}</div>
+            ))}
+          </div>
+          <button
+            onClick={() => window.location.href = '/dashboard'}
+            className="w-full py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          >
+            Continue to Dashboard
+          </button>
         </div>
       </div>
     );
   }
 
+  if (sessionExpired || (!setupData && !isLoading)) {
+    return (
+      <div className="max-w-md mx-auto bg-white rounded-lg shadow-md p-6">
+        <div className="text-center">
+          <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+            <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 18.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
+          
+          <h3 className="text-lg font-medium text-gray-900 mb-2">
+            No active MFA setup session found
+          </h3>
+          
+          <p className="text-sm text-gray-500 mb-6">
+            Your MFA setup session has expired or is invalid. Please restart the setup.
+          </p>
+          
+          <button
+            onClick={restartMfaSetup}
+            disabled={isLoading}
+            className="w-full py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+          >
+            {isLoading ? 'Restarting...' : 'Restart MFA Setup'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!setupData) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
   return (
-    <div className="max-w-md mx-auto mt-8 p-6 bg-white rounded-lg shadow-md">
-      <h1 className="text-2xl font-bold text-center mb-6">Set Up Multi-Factor Authentication</h1>
+    <div className="max-w-md mx-auto bg-white rounded-lg shadow-md p-6">
+      <h2 className="text-xl font-semibold text-center mb-6">Set up Multi-Factor Authentication</h2>
+      
+      <div className="text-center mb-6">
+        <p className="text-sm text-gray-600 mb-4">
+          Scan this QR code with your authenticator app:
+        </p>
+        <img src={setupData.qrCode} alt="MFA QR Code" className="mx-auto mb-4" />
+      </div>
+
+      <div className="mb-4">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Enter verification code:
+        </label>
+        <input
+          type="text"
+          value={verificationCode}
+          onChange={(e) => setVerificationCode(e.target.value)}
+          placeholder="000000"
+          maxLength={6}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
 
       {error && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
-          <p className="text-red-700 text-sm">{error}</p>
-          {sessionExpired && (
-            <button
-              onClick={restartSetup}
-              disabled={loading}
-              className="mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
-            >
-              {loading ? 'Generating...' : 'Generate New QR Code'}
-            </button>
-          )}
+        <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+          {error}
         </div>
       )}
 
-      {success && (
-        <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-md">
-          <p className="text-green-700 text-sm">{success}</p>
-        </div>
-      )}
-
-      {/* Step 1: Method Selection */}
-      {step === 1 && setupData && !sessionExpired && (
-        <div className="text-center">
-          <h2 className="text-lg font-semibold mb-4">Choose MFA Method</h2>
-          <p className="text-sm text-gray-600 mb-6">
-            Select how you want to receive verification codes
-          </p>
-          
-          <button
-            onClick={selectAuthenticatorMethod}
-            disabled={loading}
-            className="w-full bg-indigo-600 text-white py-3 px-4 rounded hover:bg-indigo-700 disabled:opacity-50 mb-4"
-          >
-            {loading ? 'Setting up...' : '📱 Authenticator App'}
-          </button>
-          
-          <p className="text-xs text-gray-500">
-            Use Google Authenticator, Microsoft Authenticator, or similar apps
-          </p>
-        </div>
-      )}
-
-      {/* Step 2: QR Code & Manual Entry */}
-      {step === 2 && setupData && !sessionExpired && (
-        <div className="text-center">
-          <h2 className="text-lg font-semibold mb-4">Scan QR Code or Enter Manually</h2>
-          
-          {/* QR Code */}
-          <div className="mb-6">
-            <h3 className="font-medium mb-2">Option 1: Scan QR Code</h3>
-            <div className="bg-white p-4 rounded-lg inline-block border">
-              <QRCodeSVG value={setupData.qrCodeUrl} size={200} />
-            </div>
-          </div>
-
-          {/* Manual Entry */}
-          <div className="mb-6 text-left">
-            <h3 className="font-medium mb-2">Option 2: Manual Entry</h3>
-            <div className="bg-gray-50 p-4 rounded-md space-y-3">
-              <div>
-                <label className="text-xs text-gray-500 block mb-1">Account Name:</label>
-                <div className="flex items-center justify-between">
-                  <code className="text-sm bg-white px-2 py-1 rounded border flex-1 mr-2">
-                    {setupData.accountName}
-                  </code>
-                  <button
-                    onClick={() => copyToClipboard(setupData.accountName)}
-                    className="text-indigo-600 hover:text-indigo-800"
-                    title="Copy account name"
-                  >
-                    📋
-                  </button>
-                </div>
-              </div>
-              
-              <div>
-                <label className="text-xs text-gray-500 block mb-1">Secret Key:</label>
-                <div className="flex items-center justify-between">
-                  <code className="text-sm bg-white px-2 py-1 rounded border flex-1 mr-2 break-all">
-                    {setupData.secret}
-                  </code>
-                  <button
-                    onClick={() => copyToClipboard(setupData.secret)}
-                    className="text-indigo-600 hover:text-indigo-800"
-                    title="Copy secret key"
-                  >
-                    📋
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="text-left mb-6">
-            <h3 className="font-medium mb-2">Recommended Apps:</h3>
-            <ul className="text-sm text-gray-600 space-y-1">
-              <li>• Google Authenticator</li>
-              <li>• Microsoft Authenticator</li>
-              <li>• Authy</li>
-            </ul>
-          </div>
-
-          <button
-            onClick={() => setStep(3)}
-            className="w-full bg-indigo-600 text-white py-2 px-4 rounded hover:bg-indigo-700"
-          >
-            I've Added the Account
-          </button>
-        </div>
-      )}
-
-      {/* Step 3: Verification */}
-      {step === 3 && !sessionExpired && (
-        <div className="text-center">
-          <h2 className="text-lg font-semibold mb-4">Verify Setup</h2>
-          <p className="text-sm text-gray-600 mb-6">
-            Enter the 6-digit code from your authenticator app
-          </p>
-
-          <input
-            type="text"
-            value={verificationCode}
-            onChange={(e) => {
-              const value = e.target.value.replace(/\D/g, '').slice(0, 6);
-              setVerificationCode(value);
-              setError('');
-            }}
-            placeholder="000000"
-            className="w-full text-center text-2xl font-mono tracking-widest px-4 py-3 border rounded-md mb-6"
-            maxLength={6}
-          />
-
-          <div className="flex space-x-3">
-            <button
-              onClick={() => setStep(2)}
-              className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded hover:bg-gray-400"
-            >
-              Back
-            </button>
-            <button
-              onClick={verifySetup}
-              disabled={loading || verificationCode.length !== 6}
-              className="flex-1 bg-indigo-600 text-white py-2 px-4 rounded hover:bg-indigo-700 disabled:opacity-50"
-            >
-              {loading ? 'Verifying...' : 'Verify'}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Step 4: Backup Codes */}
-      {step === 4 && (
-        <div className="text-center">
-          <h2 className="text-lg font-semibold mb-4">Save Your Backup Codes</h2>
-          <p className="text-sm text-gray-600 mb-6">
-            Store these codes safely. Each can only be used once.
-          </p>
-
-          <div className="bg-gray-50 p-4 rounded-lg mb-6">
-            <div className="grid grid-cols-2 gap-2 text-sm font-mono">
-              {backupCodes.map((code, index) => (
-                <div key={index} className="bg-white p-2 rounded text-center">
-                  {code}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex space-x-3 mb-6">
-            <button
-              onClick={() => copyToClipboard(backupCodes.join('\n'))}
-              className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded hover:bg-gray-400"
-            >
-              Copy Codes
-            </button>
-            <button
-              onClick={() => {
-                const element = document.createElement('a');
-                const file = new Blob([backupCodes.join('\n')], { type: 'text/plain' });
-                element.href = URL.createObjectURL(file);
-                element.download = 'mfa-backup-codes.txt';
-                element.click();
-              }}
-              className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded hover:bg-gray-400"
-            >
-              Download
-            </button>
-          </div>
-
-          <button
-            onClick={() => window.location.href = '/dashboard'}
-            className="w-full bg-green-600 text-white py-2 px-4 rounded hover:bg-green-700"
-          >
-            Complete Setup
-          </button>
-        </div>
-      )}
-
-      {/* Session Expired State */}
-      {sessionExpired && (
-        <div className="text-center">
-          <div className="text-red-600 mb-4">
-            <h2 className="text-lg font-semibold mb-2">Setup Session Expired</h2>
-            <p className="text-sm">Your session has expired. Generate a new QR code to continue.</p>
-          </div>
-          
-          <button
-            onClick={restartSetup}
-            disabled={loading}
-            className="w-full bg-indigo-600 text-white py-2 px-4 rounded hover:bg-indigo-700 disabled:opacity-50"
-          >
-            {loading ? 'Generating...' : 'Generate New QR Code'}
-          </button>
-        </div>
-      )}
+      <button
+        onClick={verifyMfaCode}
+        disabled={isLoading || !verificationCode}
+        className="w-full py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+      >
+        {isLoading ? 'Verifying...' : 'Verify and Complete Setup'}
+      </button>
     </div>
   );
 };
 
-export default MfaSetup;
+export default MfaSetupFixed;

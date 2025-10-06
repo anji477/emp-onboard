@@ -19,6 +19,7 @@ import Login from './components/pages/Login';
 import SetupPassword from './components/pages/SetupPassword';
 import ResetPassword from './components/pages/ResetPassword';
 import MfaSetup from './components/pages/MfaSetup';
+import MfaDemo from './components/pages/MfaDemo';
 import MaintenancePage from './components/MaintenancePage';
 import { User, UserRole } from './types';
 import { mockUser, mockAdmin } from './data/mockData';
@@ -107,6 +108,7 @@ const App: React.FC = () => {
           ) : (
             <>
               <Route path="/mfa-setup" element={<MfaSetup />} />
+              <Route path="/mfa-demo" element={<MfaDemo />} />
               <Route path="/" element={<Layout />}>
                 <Route index element={<Dashboard />} />
                 <Route path="tasks" element={<Tasks />} />

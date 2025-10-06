@@ -12,12 +12,27 @@ import QRCode from 'qrcode';
 import crypto from 'crypto';
 import db from './db-mysql.js'; // Import our database connection
 import { generateToken, verifyToken, requireRole } from './middleware/auth.js';
+import { safeJsonParse } from './utils/safeJson.js';
+import { verifyCsrfToken, getCsrfToken } from './middleware/csrf.js';
+import { sessionMiddleware, initSessionStore } from './middleware/session.js';
+import TokenBlacklist from './services/tokenBlacklist.js';
+import { asyncHandler, handleDatabaseError, globalErrorHandler, logError } from './utils/errorHandler.js';
+import { validateFileType, sanitizeFilename, validateFileSize } from './utils/fileValidation.js';
+import { validateUploadSecurity, sanitizeUploadPath } from './middleware/uploadSecurity.js';
+import { validateUserInput, validateEmail, validateString, validateInteger } from './utils/validation.js';
+import { generateSecureToken, generateInvitationToken, generateResetToken } from './utils/crypto.js';
+import { filterUserResponse, filterUsersResponse, removeDebugInfo } from './utils/responseFilter.js';
 
 // Load environment variables
 dotenv.config();
 
 const app = express();
-app.use(cors({ credentials: true, origin: ['http://localhost:5173', 'http://192.168.1.140:5173'] })); // Allow requests from localhost and server IP
+app.use(cors({ 
+  credentials: true, 
+  origin: ['http://localhost:5173', 'http://192.168.1.140:5173'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],
+  exposedHeaders: ['X-CSRF-Token']
+})); // Allow requests from localhost and server IP
 app.use(express.json({ limit: '50mb' })); // Allow the server to understand JSON data with larger payload limit
 app.use(cookieParser()); // Parse cookies
 app.use((req, res, next) => {
@@ -53,6 +68,25 @@ app.use((req, res, next) => {
   next();
 });
 
+// Initialize session store and token blacklist
+const sessionStore = initSessionStore(db);
+const tokenBlacklist = new TokenBlacklist(db);
+
+// Session middleware
+app.use(sessionMiddleware);
+
+// Add token blacklist to requests
+app.use((req, res, next) => {
+  req.tokenBlacklist = tokenBlacklist;
+  next();
+});
+
+// CSRF protection for state-changing requests
+app.use(verifyCsrfToken);
+
+// CSRF token endpoint
+app.get('/api/csrf-token', getCsrfToken);
+
 
 
 // Create uploads directory
@@ -61,47 +95,45 @@ if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
-// Configure multer
+// Configure secure multer
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         cb(null, uploadsDir);
     },
     filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+        try {
+            const secureFilename = sanitizeFilename(file.originalname);
+            cb(null, secureFilename);
+        } catch (error) {
+            cb(error);
+        }
     }
 });
 
 const upload = multer({
     storage: storage,
-    limits: { fileSize: 100 * 1024 * 1024 }, // 100MB for videos
+    limits: { 
+        fileSize: 50 * 1024 * 1024, // 50MB max
+        files: 1,
+        fields: 10
+    },
     fileFilter: (req, file, cb) => {
-        // Allow all files for training uploads
-        if (file.fieldname === 'trainingFile') {
-            return cb(null, true);
+        // Validate file size
+        if (!validateFileSize(file.size, 50 * 1024 * 1024)) {
+            return cb(new Error('File too large'));
         }
         
-        // Allow PDF/DOC/PPT files for policy uploads
-        if (file.fieldname === 'policyFile') {
-            const allowedTypes = /\.(pdf|doc|docx|ppt|pptx)$/i;
-            if (allowedTypes.test(file.originalname)) {
-                return cb(null, true);
-            } else {
-                return cb(new Error('Only PDF, DOC, DOCX, PPT, and PPTX files are allowed for policies'));
-            }
+        // Determine file category and validate
+        let category = 'documents';
+        if (file.fieldname === 'trainingFile') category = 'training';
+        else if (file.fieldname === 'policyFile') category = 'policies';
+        else if (file.fieldname === 'employeeFile') category = 'excel';
+        
+        if (!validateFileType(file, category)) {
+            return cb(new Error('Invalid file type'));
         }
         
-        // Original validation for document uploads
-        const allowedExtensions = /\.(pdf|doc|docx|mp4|avi|mov|wmv|flv|webm)$/i;
-        const extname = allowedExtensions.test(file.originalname);
-        const allowedMimes = /^(application|video)\//;
-        const mimetype = allowedMimes.test(file.mimetype);
-        
-        if (mimetype && extname) {
-            return cb(null, true);
-        } else {
-            cb(new Error(`File type not allowed: ${file.mimetype}`));
-        }
+        cb(null, true);
     }
 });
 
@@ -113,7 +145,7 @@ app.get('/', (req, res) => {
 });
 
 // Test database connection
-app.get('/api/test', async (req, res) => {
+app.get('/api/test', asyncHandler(async (req, res) => {
   try {
     const [result] = await db.execute('SELECT 1 as test');
     const [users] = await db.execute('SELECT id, name, email FROM users');
@@ -121,30 +153,25 @@ app.get('/api/test', async (req, res) => {
     const [assignments] = await db.execute('SELECT * FROM user_assignments');
     res.json({ message: 'Database connected successfully', result, users, tasks, assignments });
   } catch (error) {
-    console.error('Database connection error:', error);
-    res.status(500).json({ message: 'Database connection failed', error: error.message });
+    if (error.code === 'ECONNREFUSED') {
+      return res.status(503).json({ message: 'Database server unavailable. Please start MySQL service.' });
+    }
+    throw error;
   }
-});
+}));
 
 // GET all tasks for current user (or all tasks if Admin/HR)
-app.get('/api/tasks', verifyToken, async (req, res) => {
-  try {
-    let tasks;
-    if (req.user.role === 'Admin' || req.user.role === 'HR') {
-      // Admin/HR can see all tasks
-      const [allTasks] = await db.execute('SELECT * FROM tasks ORDER BY id DESC');
-      tasks = allTasks;
-    } else {
-      // Regular users see only their own tasks
-      const [userTasks] = await db.execute('SELECT * FROM tasks WHERE user_id = ?', [req.user.id]);
-      tasks = userTasks;
-    }
-    res.json(tasks);
-  } catch (error) {
-    console.error('Error fetching tasks:', error);
-    res.status(500).json({ message: 'Server error' });
+app.get('/api/tasks', verifyToken, asyncHandler(async (req, res) => {
+  let tasks;
+  if (req.user.role === 'Admin' || req.user.role === 'HR') {
+    const [allTasks] = await db.execute('SELECT * FROM tasks ORDER BY id DESC');
+    tasks = allTasks;
+  } else {
+    const [userTasks] = await db.execute('SELECT * FROM tasks WHERE user_id = ?', [req.user.id]);
+    tasks = userTasks;
   }
-});
+  res.json(tasks);
+}));
 
 // GET tasks for a specific user
 app.get('/api/users/:userId/tasks', verifyToken, async (req, res) => {
@@ -153,8 +180,7 @@ app.get('/api/users/:userId/tasks', verifyToken, async (req, res) => {
     const [tasks] = await db.execute('SELECT * FROM tasks WHERE user_id = ?', [userId]);
     res.json(tasks);
   } catch (error) {
-    console.error('Error fetching tasks:', error);
-    res.status(500).json({ message: 'Server error' });
+    return handleDatabaseError(error, res, 'task fetch');
   }
 });
 
@@ -211,8 +237,7 @@ app.get('/api/users/:userId/progress', verifyToken, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error calculating progress:', error);
-    res.status(500).json({ message: 'Server error' });
+    return handleDatabaseError(error, res, 'progress calculation');
   }
 });
 
@@ -273,8 +298,7 @@ app.put('/api/tasks/:id', verifyToken, async (req, res) => {
     console.log('Task updated successfully:', updatedTask);
     res.json({ message: 'Task updated successfully', task: updatedTask });
   } catch (error) {
-    console.error('Error updating task:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    return handleDatabaseError(error, res, 'task update');
   }
 });
 
@@ -291,14 +315,38 @@ app.delete('/api/tasks/:id', verifyToken, requireRole(['Admin', 'HR']), async (r
     await db.execute('DELETE FROM tasks WHERE id = ?', [id]);
     res.json({ message: 'Task deleted successfully' });
   } catch (error) {
-    console.error('Error deleting task:', error);
-    res.status(500).json({ message: 'Server error' });
+    return handleDatabaseError(error, res, 'task deletion');
   }
 });
 
-// LOGOUT endpoint
-app.post('/api/logout', (req, res) => {
-  res.clearCookie('token');
+// LOGOUT endpoint (exempt from CSRF)
+app.post('/api/logout', async (req, res) => {
+  // Blacklist JWT token
+  const token = req.cookies.token;
+  if (token && tokenBlacklist) {
+    await tokenBlacklist.blacklist(token);
+  }
+  
+  // Destroy session
+  if (req.session) {
+    await req.session.destroy();
+  }
+  
+  // Clear both cookies
+  res.clearCookie('token', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    path: '/'
+  });
+  
+  res.clearCookie('sessionId', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    path: '/'
+  });
+  
   res.json({ message: 'Logged out successfully' });
 });
 
@@ -396,7 +444,7 @@ app.get('/api/users', verifyToken, async (req, res) => {
 });
 
 // GET user by ID
-app.get('/api/users/:id', async (req, res) => {
+app.get('/api/users/:id', verifyToken, async (req, res) => {
   try {
     const [users] = await db.execute('SELECT * FROM users WHERE id = ?', [req.params.id]);
     const user = users[0];
@@ -411,7 +459,7 @@ app.get('/api/users/:id', async (req, res) => {
 });
 
 // UPDATE user profile
-app.put('/api/users/:id', async (req, res) => {
+app.put('/api/users/:id', verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
     const { name, email, avatar_url } = req.body;
@@ -434,15 +482,31 @@ app.put('/api/users/:id', async (req, res) => {
   }
 });
 
-// SWITCH user role (Admin only or own role)
+// SWITCH user role (Admin only or own role with proper validation)
 app.put('/api/users/:id/switch-role', verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
     const { role } = req.body;
     
-    // Allow Admin to switch any user's role, or users to switch their own role
-    if (req.user.role !== 'Admin' && req.user.id != id) {
+    // Only allow users to switch their own role
+    if (req.user.id != id) {
       return res.status(403).json({ message: 'Access denied' });
+    }
+    
+    // Get user's available roles from user_roles table
+    let availableRoles = [req.user.role];
+    try {
+      const [userRoles] = await db.execute('SELECT role FROM user_roles WHERE user_id = ? AND is_active = TRUE', [req.user.id]);
+      if (userRoles.length > 0) {
+        availableRoles = userRoles.map(r => r.role);
+      }
+    } catch (roleError) {
+      console.log('user_roles table not available, using single role');
+    }
+    
+    // Check if the requested role is in user's available roles
+    if (!availableRoles.includes(role)) {
+      return res.status(403).json({ message: 'You do not have permission to switch to this role' });
     }
     
     // Update the primary role in users table
@@ -494,7 +558,7 @@ app.put('/api/users/:id/roles', verifyToken, requireRole(['Admin']), async (req,
 });
 
 // UPDATE user password
-app.put('/api/users/:id/password', async (req, res) => {
+app.put('/api/users/:id/password', verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
     const { currentPassword, newPassword } = req.body;
@@ -580,23 +644,16 @@ app.put('/api/assets/:id', verifyToken, requireRole(['Admin']), async (req, res)
 });
 
 // CREATE new user
-app.post('/api/users', verifyToken, requireRole(['Admin', 'HR']), async (req, res) => {
+app.post('/api/users', verifyToken, requireRole(['Admin', 'HR']), asyncHandler(async (req, res) => {
+  const { name, email, password, role, team, job_title, start_date } = req.body;
+  
+  if (!name || !email || !password) {
+    return res.status(400).json({ message: 'Name, email, and password are required' });
+  }
+  
+  const avatar_url = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=6366f1&color=fff`;
+  
   try {
-    console.log('POST /api/users - Request body:', req.body);
-    const { name, email, password, role, team, job_title, start_date } = req.body;
-    
-    if (!name || !email || !password) {
-      console.log('Validation failed: missing name, email, or password');
-      return res.status(400).json({ message: 'Name, email, and password are required' });
-    }
-    
-    const avatar_url = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=6366f1&color=fff`;
-    
-    console.log('Attempting to insert user with data:', {
-      name, email, role: role || 'Employee', avatar_url, team, job_title, start_date
-    });
-    
-    // Hash password before storing
     const hashedPassword = await bcrypt.hash(password, 12);
     
     const [result] = await db.execute(
@@ -604,30 +661,24 @@ app.post('/api/users', verifyToken, requireRole(['Admin', 'HR']), async (req, re
       [name, email, hashedPassword, role || 'Employee', avatar_url, team, job_title, start_date, 0]
     );
     
-    console.log('Insert result:', result);
-    
     const [newUsers] = await db.execute('SELECT * FROM users WHERE id = ?', [result.insertId]);
-    const newUser = newUsers[0];
-    console.log('Retrieved new user:', newUser);
-    res.status(201).json(newUser);
+    const safeUser = filterUserResponse(newUsers[0]);
+    res.status(201).json(safeUser);
   } catch (error) {
-    console.error('Detailed error creating user:', error);
-    console.error('Error stack:', error.stack);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    return handleDatabaseError(error, res, 'user creation');
   }
-});
+}));
 
 // INVITE user
-app.post('/api/users/invite', verifyToken, requireRole(['Admin', 'HR']), async (req, res) => {
-  try {
-    const { name, email, role, team, job_title, start_date } = req.body;
+app.post('/api/users/invite', verifyToken, requireRole(['Admin', 'HR']), asyncHandler(async (req, res) => {
+  const { name, email, role, team, job_title, start_date } = req.body;
+  
+  if (!name || !email) {
+    return res.status(400).json({ message: 'Name and email are required' });
+  }
     
-    if (!name || !email) {
-      return res.status(400).json({ message: 'Name and email are required' });
-    }
-    
-    // Generate invitation token
-    const token = Math.random().toString(36).substring(2) + Date.now().toString(36);
+    // Generate secure invitation token
+    const token = generateInvitationToken();
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
     const avatar_url = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=6366f1&color=fff`;
     
@@ -655,7 +706,7 @@ app.post('/api/users/invite', verifyToken, requireRole(['Admin', 'HR']), async (
       
       let config = null;
       if (emailSettings.length > 0) {
-        config = JSON.parse(emailSettings[0].setting_value);
+        config = safeJsonParse(emailSettings[0].setting_value, null);
       }
       
       const emailSent = await sendInvitationEmail(email, name, token, config);
@@ -676,11 +727,7 @@ app.post('/api/users/invite', verifyToken, requireRole(['Admin', 'HR']), async (
         message
       });
     } catch (emailError) {
-      console.error('Email service error details:', {
-        message: emailError.message,
-        code: emailError.code,
-        stack: emailError.stack
-      });
+      logError(emailError, 'email service');
       
       const [newUsers] = await db.execute('SELECT * FROM users WHERE id = ?', [result.insertId]);
       const newUser = newUsers[0];
@@ -688,16 +735,12 @@ app.post('/api/users/invite', verifyToken, requireRole(['Admin', 'HR']), async (
       res.status(201).json({ 
         user: newUser, 
         emailSent: false,
-        message: `User invited but email service error: ${emailError.message}`
+        message: 'User invited but email service unavailable'
       });
     }
-  } catch (error) {
-    console.error('Error inviting user:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
+}));
 
-// VERIFY invitation token
+// VERIFY invitation token (public endpoint)
 app.get('/api/verify-token/:token', async (req, res) => {
   try {
     const { token } = req.params;
@@ -719,7 +762,7 @@ app.get('/api/verify-token/:token', async (req, res) => {
   }
 });
 
-// SETUP password
+// SETUP password (public endpoint)
 app.post('/api/setup-password', async (req, res) => {
   try {
     const { token, password } = req.body;
@@ -749,7 +792,7 @@ app.post('/api/setup-password', async (req, res) => {
   }
 });
 
-// FORGOT password
+// FORGOT password (public endpoint)
 app.post('/api/forgot-password', async (req, res) => {
   try {
     const { email } = req.body;
@@ -761,7 +804,7 @@ app.post('/api/forgot-password', async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
     
-    const resetToken = Math.random().toString(36).substring(2) + Date.now().toString(36);
+    const resetToken = generateResetToken();
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
     
     await db.execute(
@@ -776,7 +819,12 @@ app.post('/api/forgot-password', async (req, res) => {
       res.json({ message: 'Password reset link sent to your email' });
     } catch (emailError) {
       console.error('Email service error:', emailError);
-      console.log(`Reset token: ${resetToken} (In production, this would be emailed)`);
+      console.log('Reset token generated - check secure logs for details');
+      
+      // Log token to secure location only
+      const fs = await import('fs');
+      const logEntry = `${new Date().toISOString()} - Reset token for ${email}: ${resetToken}\n`;
+      fs.default.appendFileSync('./reset-tokens.log', logEntry, { mode: 0o600 });
       res.json({ message: `Reset token generated but email service unavailable. Reset token: ${resetToken}` });
     }
   } catch (error) {
@@ -785,7 +833,7 @@ app.post('/api/forgot-password', async (req, res) => {
   }
 });
 
-// RESET password
+// RESET password (public endpoint)
 app.post('/api/reset-password', async (req, res) => {
   try {
     const { token, password } = req.body;
@@ -815,7 +863,7 @@ app.post('/api/reset-password', async (req, res) => {
 });
 
 // GET notifications for user
-app.get('/api/notifications/:userId', async (req, res) => {
+app.get('/api/notifications/:userId', verifyToken, async (req, res) => {
   try {
     const { userId } = req.params;
     const [notifications] = await db.execute(
@@ -830,7 +878,7 @@ app.get('/api/notifications/:userId', async (req, res) => {
 });
 
 // UPDATE notification as read
-app.put('/api/notifications/:id/read', async (req, res) => {
+app.put('/api/notifications/:id/read', verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
     await db.execute('UPDATE notifications SET is_read = 1 WHERE id = ?', [id]);
@@ -842,7 +890,7 @@ app.put('/api/notifications/:id/read', async (req, res) => {
 });
 
 // UPDATE all notifications as read for user
-app.put('/api/notifications/user/:userId/read-all', async (req, res) => {
+app.put('/api/notifications/user/:userId/read-all', verifyToken, async (req, res) => {
   try {
     const { userId } = req.params;
     await db.execute('UPDATE notifications SET is_read = 1 WHERE user_id = ?', [userId]);
@@ -854,15 +902,14 @@ app.put('/api/notifications/user/:userId/read-all', async (req, res) => {
 });
 
 // CHANGE password (for authenticated users)
-app.post('/api/auth/change-password', verifyToken, async (req, res) => {
+app.post('/api/auth/change-password', verifyToken, asyncHandler(async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ message: 'Current password and new password are required' });
+  }
+  
   try {
-    const { currentPassword, newPassword } = req.body;
-    
-    if (!currentPassword || !newPassword) {
-      return res.status(400).json({ message: 'Current password and new password are required' });
-    }
-    
-    // Get current user password hash
     const [users] = await db.execute('SELECT password_hash FROM users WHERE id = ?', [req.user.id]);
     const user = users[0];
     
@@ -870,7 +917,6 @@ app.post('/api/auth/change-password', verifyToken, async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
     
-    // Verify current password
     const isValidPassword = await bcrypt.compare(currentPassword, user.password_hash);
     if (!isValidPassword) {
       return res.status(400).json({ message: 'Current password is incorrect' });
@@ -934,39 +980,34 @@ app.post('/api/auth/change-password', verifyToken, async (req, res) => {
       [req.user.id, req.user.id]
     );
     
-    console.log(`Password changed for user ${req.user.id}`);
     res.json({ message: 'Password changed successfully' });
   } catch (error) {
-    console.error('Error changing password:', error);
-    res.status(500).json({ message: 'Server error' });
+    return handleDatabaseError(error, res, 'password change');
   }
-});
+}));
 
 // LOGIN authentication with MFA support
-app.post('/api/login', async (req, res) => {
-  try {
-    const { email, password, rememberMe } = req.body;
-    
-    if (!email || !password) {
-      return res.status(400).json({ message: 'Email and password are required' });
-    }
-    
-    // Find user by email
-    const [users] = await db.execute('SELECT * FROM users WHERE email = ?', [email]);
-    const user = users[0];
-    console.log('Login attempt for:', email);
-    console.log('User found:', user ? 'Yes' : 'No');
-    
-    if (!user) {
-      return res.status(401).json({ message: 'Invalid email or password' });
-    }
-    
-    // Check password using bcrypt
-    const isValidPassword = await bcrypt.compare(password, user.password_hash);
-    
-    if (!isValidPassword) {
-      return res.status(401).json({ message: 'Invalid email or password' });
-    }
+app.post('/api/login', asyncHandler(async (req, res) => {
+  const { email, password, rememberMe } = req.body;
+  
+  if (!email || !password) {
+    return res.status(400).json({ message: 'Email and password are required' });
+  }
+  
+  // Find user by email
+  const [users] = await db.execute('SELECT * FROM users WHERE email = ?', [email]);
+  const user = users[0];
+  
+  if (!user) {
+    return res.status(401).json({ message: 'Invalid credentials' });
+  }
+  
+  // Check password using bcrypt
+  const isValidPassword = await bcrypt.compare(password, user.password_hash);
+  
+  if (!isValidPassword) {
+    return res.status(401).json({ message: 'Invalid credentials' });
+  }
     
     // Check password expiry
     const [passwordPolicy] = await db.execute(
@@ -974,7 +1015,7 @@ app.post('/api/login', async (req, res) => {
     );
     
     if (passwordPolicy.length > 0) {
-      const policy = JSON.parse(passwordPolicy[0].setting_value);
+      const policy = safeJsonParse(passwordPolicy[0].setting_value, { expiryDays: 90 });
       if (policy.expiryDays && policy.expiryDays > 0) {
         // Check password age
         const passwordDate = user.password_changed_at;
@@ -998,7 +1039,7 @@ app.post('/api/login', async (req, res) => {
     
     let mfaRequired = false;
     if (mfaSettings.length > 0) {
-      const policy = JSON.parse(mfaSettings[0].setting_value);
+      const policy = safeJsonParse(mfaSettings[0].setting_value, { enforced: false });
       mfaRequired = policy.enforced || (policy.require_for_roles && policy.require_for_roles.includes(user.role));
     }
     
@@ -1006,10 +1047,24 @@ app.post('/api/login', async (req, res) => {
     if (mfaRequired) {
       // If user hasn't set up MFA yet, redirect to setup
       if (!user.mfa_enabled || !user.mfa_setup_completed) {
+        // Generate temporary JWT token for MFA setup
+        const { password_hash, invitation_token, invitation_expires, mfa_secret, mfa_backup_codes, ...userData } = user;
+        const tempToken = generateToken(userData);
+        
+        // Set temporary cookie for MFA setup
+        res.cookie('token', tempToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'strict',
+          maxAge: 60 * 60 * 1000, // 1 hour for MFA setup
+          path: '/'
+        });
+        
         return res.json({
           requiresMfaSetup: true,
           userEmail: user.email,
-          userName: user.name
+          userName: user.name,
+          tempToken: tempToken
         });
       }
       
@@ -1036,38 +1091,42 @@ app.post('/api/login', async (req, res) => {
     // Return user data without password
     const { password_hash, invitation_token, invitation_expires, mfa_secret, mfa_backup_codes, ...userData } = user;
     
-    // Generate JWT token
-    const token = generateToken(userData);
+    // Create session
+    req.session.userId = user.id;
+    req.session.data = {
+      loginTime: new Date().toISOString(),
+      userAgent: req.headers['user-agent'],
+      ip: req.ip
+    };
+    await req.session.save();
     
-    // Set HTTP-only cookie
+    // Also set JWT for backward compatibility
+    const token = generateToken(userData);
     const cookieMaxAge = rememberMe ? 30 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
     res.cookie('token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      maxAge: cookieMaxAge
+      maxAge: cookieMaxAge,
+      path: '/'
     });
     
-    res.json({
-      user: {
-        id: userData.id,
-        name: userData.name,
-        email: userData.email,
-        role: userData.role,
-        avatarUrl: userData.avatar_url,
-        team: userData.team,
-        jobTitle: userData.job_title,
-        onboardingProgress: userData.onboarding_progress
-      }
-    });
-  } catch (error) {
-    console.error('Error during login:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
+  res.json({
+    user: {
+      id: userData.id,
+      name: userData.name,
+      email: userData.email,
+      role: userData.role,
+      avatarUrl: userData.avatar_url,
+      team: userData.team,
+      jobTitle: userData.job_title,
+      onboardingProgress: userData.onboarding_progress
+    }
+  });
+}));
 
 // RESET user progress
-app.post('/api/users/:id/reset-progress', async (req, res) => {
+app.post('/api/users/:id/reset-progress', verifyToken, requireRole(['Admin', 'HR']), async (req, res) => {
   try {
     const { id } = req.params;
     await db.execute('DELETE FROM tasks WHERE user_id = ?', [id]);
@@ -1082,7 +1141,7 @@ app.post('/api/users/:id/reset-progress', async (req, res) => {
 });
 
 // DELETE user
-app.delete('/api/users/:id', async (req, res) => {
+app.delete('/api/users/:id', verifyToken, requireRole(['Admin', 'HR']), async (req, res) => {
   try {
     const { id } = req.params;
     await db.execute('DELETE FROM users WHERE id = ?', [id]);
@@ -1190,7 +1249,7 @@ app.get('/api/init-settings', async (req, res) => {
 app.get('/api/migrate-employee-id', verifyToken, requireRole(['Admin']), async (req, res) => {
   try {
     // Check if employee_id column exists
-    const [columns] = await db.execute("SHOW COLUMNS FROM users LIKE 'employee_id'");
+    const [columns] = await db.execute('SHOW COLUMNS FROM users LIKE ?', ['employee_id']);
     
     if (columns.length === 0) {
       // Add employee_id column
@@ -1200,7 +1259,7 @@ app.get('/api/migrate-employee-id', verifyToken, requireRole(['Admin']), async (
       await db.execute('CREATE INDEX idx_employee_id ON users(employee_id)');
       
       // Update existing users with auto-generated employee IDs
-      await db.execute("UPDATE users SET employee_id = CONCAT('EMP', LPAD(id, 3, '0')) WHERE employee_id IS NULL");
+      await db.execute('UPDATE users SET employee_id = CONCAT(?, LPAD(id, 3, ?)) WHERE employee_id IS NULL', ['EMP', '0']);
       
       res.json({ message: 'Employee ID migration completed successfully' });
     } else {
@@ -1369,7 +1428,7 @@ app.get('/api/maintenance-status', async (req, res) => {
     );
     
     if (settings.length > 0) {
-      const maintenanceMode = JSON.parse(settings[0].setting_value);
+      const maintenanceMode = safeJsonParse(settings[0].setting_value, { enabled: false, message: '' });
       res.json(maintenanceMode);
     } else {
       res.json({ enabled: false, message: '' });
@@ -1377,6 +1436,25 @@ app.get('/api/maintenance-status', async (req, res) => {
   } catch (error) {
     console.error('Error checking maintenance status:', error);
     res.json({ enabled: false, message: '' });
+  }
+});
+
+// GET public settings (no auth required)
+app.get('/api/public-settings', async (req, res) => {
+  try {
+    const [settings] = await db.execute(
+      'SELECT setting_key, setting_value FROM organization_settings WHERE setting_key IN ("company_info", "maintenance_mode")'
+    );
+    
+    const publicSettings = {};
+    settings.forEach(setting => {
+      publicSettings[setting.setting_key] = safeJsonParse(setting.setting_value, {});
+    });
+    
+    res.json(publicSettings);
+  } catch (error) {
+    console.error('Error fetching public settings:', error);
+    res.json({ company_info: { name: 'Employee Onboarding Portal' }, maintenance_mode: { enabled: false } });
   }
 });
 
@@ -1405,16 +1483,33 @@ app.post('/api/test-email', verifyToken, requireRole(['Admin']), async (req, res
     const result = await testEmailConfig(testEmail, config);
     res.json(result);
   } catch (error) {
-    console.error('Email test error:', error);
+    logError(error, 'email test');
     res.status(500).json({ success: false, message: 'Email service unavailable' });
   }
 });
 
-// Import MFA routes
+// Import MFA routes and enforcement middleware
 import mfaRoutes from './routes/mfa.js';
+import requireMfaSetup from './middleware/mfa-enforcement.js';
 
-// Use MFA routes
+// Use MFA routes (exclude from enforcement)
 app.use('/api/mfa', mfaRoutes);
+
+// Apply MFA enforcement to protected routes
+app.use('/api/tasks', verifyToken, requireMfaSetup);
+app.use('/api/users', verifyToken, requireMfaSetup);
+app.use('/api/assets', verifyToken, requireMfaSetup);
+app.use('/api/policies', verifyToken, requireMfaSetup);
+app.use('/api/documents', verifyToken, requireMfaSetup);
+app.use('/api/training', verifyToken, requireMfaSetup);
+app.use('/api/assignments', verifyToken, requireMfaSetup);
+app.use('/api/settings', verifyToken, requireMfaSetup);
+app.use('/api/admin', verifyToken, requireMfaSetup);
+app.use('/api/chat', verifyToken, requireMfaSetup);
+app.use('/api/search', verifyToken, requireMfaSetup);
+app.use('/api/notifications', verifyToken, requireMfaSetup);
+app.use('/api/task-categories', verifyToken, requireMfaSetup);
+app.use('/api/employees', verifyToken, requireMfaSetup);
 
 // Import Chat routes
 import chatRoutes from './routes/chat.js';
@@ -1422,9 +1517,6 @@ import chatRoutes from './routes/chat.js';
 // Import notification service
 import notificationService from './services/notificationService.js';
 import reminderService from './services/reminderService.js';
-
-// Use Chat routes
-app.use('/api/chat', chatRoutes);
 
 
 
@@ -1542,7 +1634,7 @@ app.delete('/api/policies/:id', verifyToken, requireRole(['Admin', 'HR']), async
 });
 
 // Upload policy file endpoint
-app.post('/api/policies/upload', verifyToken, requireRole(['Admin', 'HR']), upload.single('policyFile'), async (req, res) => {
+app.post('/api/policies/upload', verifyToken, requireRole(['Admin', 'HR']), upload.single('policyFile'), sanitizeUploadPath, validateUploadSecurity, asyncHandler(async (req, res) => {
   try {
     console.log('Policy upload request received');
     console.log('File:', req.file);
@@ -1561,8 +1653,9 @@ app.post('/api/policies/upload', verifyToken, requireRole(['Admin', 'HR']), uplo
       return res.status(400).json({ error: 'Title and category are required' });
     }
 
-    const fileUrl = `/uploads/${req.file.filename}`;
-    console.log('File URL:', fileUrl);
+    // Validate and sanitize file path
+    const sanitizedFilename = sanitizeFilename(req.file.filename);
+    const fileUrl = `/uploads/${sanitizedFilename}`;
     
     console.log('Inserting policy into database...');
     // Get next sort order
@@ -1586,11 +1679,10 @@ app.post('/api/policies/upload', verifyToken, requireRole(['Admin', 'HR']), uplo
       policy: newPolicy
     });
   } catch (error) {
-    console.error('Policy upload error:', error);
-    console.error('Error stack:', error.stack);
-    res.status(500).json({ error: 'Upload failed', details: error.message });
+    logError(error, 'policy upload');
+    res.status(500).json({ error: 'Upload failed' });
   }
-});
+}));
 
 
 
@@ -1802,7 +1894,9 @@ app.post('/api/documents/templates/upload', verifyToken, requireRole(['Admin', '
       return res.status(400).json({ error: 'File and name are required' });
     }
     
-    const fileUrl = `/uploads/${req.file.filename}`;
+    // Validate and sanitize file path
+    const sanitizedFilename = sanitizeFilename(req.file.filename);
+    const fileUrl = `/uploads/${sanitizedFilename}`;
     
     const [result] = await db.execute(
       'INSERT INTO document_templates (name, description, category, priority, due_in_days, is_required, file_url, file_name, file_size, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
@@ -1840,7 +1934,9 @@ app.post('/api/documents/company/upload', verifyToken, requireRole(['Admin', 'HR
       return res.status(400).json({ error: 'File and name are required' });
     }
     
-    const fileUrl = `/uploads/${req.file.filename}`;
+    // Validate and sanitize file path
+    const sanitizedFilename = sanitizeFilename(req.file.filename);
+    const fileUrl = `/uploads/${sanitizedFilename}`;
     
     const [result] = await db.execute(
       'INSERT INTO company_documents (name, description, category, file_url, file_name, file_size, version, uploaded_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
@@ -1881,17 +1977,23 @@ app.post('/api/documents/bulk-action', verifyToken, requireRole(['Admin', 'HR'])
       return res.status(400).json({ error: 'Action and document IDs are required' });
     }
     
-    const placeholders = documentIds.map(() => '?').join(',');
+    // Validate document IDs are numbers to prevent injection
+    const validIds = documentIds.filter(id => Number.isInteger(Number(id)));
+    if (validIds.length !== documentIds.length) {
+      return res.status(400).json({ error: 'Invalid document IDs provided' });
+    }
+    
+    const placeholders = validIds.map(() => '?').join(',');
     
     if (action === 'verify') {
       await db.execute(
         `UPDATE user_documents SET status = 'Verified', action_date = CURDATE(), rejection_reason = NULL WHERE id IN (${placeholders})`,
-        documentIds
+        validIds
       );
     } else if (action === 'reject') {
       await db.execute(
         `UPDATE user_documents SET status = 'Rejected', action_date = CURDATE(), rejection_reason = ? WHERE id IN (${placeholders})`,
-        [rejectionReason || 'Bulk rejection', ...documentIds]
+        [rejectionReason || 'Bulk rejection', ...validIds]
       );
     }
     
@@ -1977,7 +2079,7 @@ app.post('/api/assets', verifyToken, requireRole(['Admin']), async (req, res) =>
 
 
 // Upload training material endpoint
-app.post('/api/training/upload', upload.fields([{name: 'trainingFile', maxCount: 1}, {name: 'thumbnail', maxCount: 1}]), async (req, res) => {
+app.post('/api/training/upload', upload.fields([{name: 'trainingFile', maxCount: 1}, {name: 'thumbnail', maxCount: 1}]), sanitizeUploadPath, validateUploadSecurity, asyncHandler(async (req, res) => {
   try {
     console.log('Training upload request received');
     console.log('File:', req.file);
@@ -2019,17 +2121,18 @@ app.post('/api/training/upload', upload.fields([{name: 'trainingFile', maxCount:
     }
     
     // File size validation
-    if (trainingFile.size > 100 * 1024 * 1024) {
-      console.log('File too large:', trainingFile.size);
-      return res.status(400).json({ error: 'File size must be less than 100MB' });
+    if (!validateFileSize(trainingFile.size, 50 * 1024 * 1024)) {
+      return res.status(400).json({ error: 'File size must be less than 50MB' });
     }
 
-    const fileUrl = `/uploads/${trainingFile.filename}`;
+    // Validate file path
+    const sanitizedFilename = sanitizeFilename(trainingFile.filename);
+    const fileUrl = `/uploads/${sanitizedFilename}`;
     let thumbnailUrl = 'https://picsum.photos/400/225?random=' + Date.now();
     
     if (thumbnailFile) {
-      thumbnailUrl = `/uploads/${thumbnailFile.filename}`;
-      console.log('Custom thumbnail uploaded:', thumbnailUrl);
+      const sanitizedThumbFilename = sanitizeFilename(thumbnailFile.filename);
+      thumbnailUrl = `/uploads/${sanitizedThumbFilename}`;
     }
     
     console.log('File URL:', fileUrl);
@@ -2054,11 +2157,10 @@ app.post('/api/training/upload', upload.fields([{name: 'trainingFile', maxCount:
       }
     });
   } catch (error) {
-    console.error('Training upload error:', error);
-    console.error('Error stack:', error.stack);
-    res.status(500).json({ error: 'Upload failed', details: error.message });
+    logError(error, 'training upload');
+    res.status(500).json({ error: 'Upload failed' });
   }
-});
+}));
 
 // Get all training modules
 app.get('/api/training', async (req, res) => {
@@ -2133,7 +2235,7 @@ app.delete('/api/training/:id', async (req, res) => {
 });
 
 // Upload document endpoint
-app.post('/api/documents/upload', upload.single('document'), async (req, res) => {
+app.post('/api/documents/upload', upload.single('document'), sanitizeUploadPath, validateUploadSecurity, asyncHandler(async (req, res) => {
   try {
     console.log('Upload request received:', {
       file: req.file ? req.file.filename : 'No file',
@@ -2149,7 +2251,9 @@ app.post('/api/documents/upload', upload.single('document'), async (req, res) =>
       return res.status(400).json({ error: 'User ID and document name are required' });
     }
 
-    const fileUrl = `/uploads/${req.file.filename}`;
+    // Validate and sanitize file path
+    const sanitizedFilename = sanitizeFilename(req.file.filename);
+    const fileUrl = `/uploads/${sanitizedFilename}`;
     
     console.log('Inserting document into database:', {
       userId,
@@ -2192,10 +2296,10 @@ app.post('/api/documents/upload', upload.single('document'), async (req, res) =>
       }
     });
   } catch (error) {
-    console.error('Upload error:', error);
-    res.status(500).json({ error: 'Upload failed', details: error.message });
+    logError(error, 'document upload');
+    res.status(500).json({ error: 'Upload failed' });
   }
-});
+}));
 
 // CREATE new task
 app.post('/api/tasks', verifyToken, requireRole(['Admin', 'HR']), async (req, res) => {
@@ -2412,7 +2516,9 @@ const cleanupExpiredSessions = async () => {
       console.log(`🧹 Cleaned up ${result.affectedRows} expired MFA sessions`);
     }
   } catch (error) {
-    console.error('Error cleaning up expired sessions:', error);
+    if (error.code !== 'ECONNREFUSED') {
+      console.error('Error cleaning up expired sessions:', error.message);
+    }
   }
 };
 
@@ -2424,25 +2530,30 @@ setInterval(cleanupExpiredSessions, cleanupInterval);
 import BulkUploadController from './controllers/bulkUploadController.js';
 const bulkUploadController = new BulkUploadController(db);
 
-// Configure multer for Excel files
+// Configure secure Excel upload
 const excelUpload = multer({
   storage: multer.diskStorage({
     destination: (req, file, cb) => {
       cb(null, uploadsDir);
     },
     filename: (req, file, cb) => {
-      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-      cb(null, 'bulk-employees-' + uniqueSuffix + path.extname(file.originalname));
+      try {
+        const secureFilename = sanitizeFilename(file.originalname);
+        cb(null, secureFilename);
+      } catch (error) {
+        cb(error);
+      }
     }
   }),
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  limits: { 
+    fileSize: 10 * 1024 * 1024,
+    files: 1
+  },
   fileFilter: (req, file, cb) => {
-    const allowedTypes = /\.(xlsx|xls)$/i;
-    if (allowedTypes.test(file.originalname)) {
-      return cb(null, true);
-    } else {
-      return cb(new Error('Only Excel files (.xlsx, .xls) are allowed'));
+    if (!validateFileType(file, 'excel')) {
+      return cb(new Error('Only Excel files are allowed'));
     }
+    cb(null, true);
   }
 });
 
@@ -2451,9 +2562,12 @@ app.get('/api/employees/template', verifyToken, requireRole(['Admin', 'HR']), (r
   bulkUploadController.downloadTemplate(req, res);
 });
 
-app.post('/api/employees/bulk-upload', verifyToken, requireRole(['Admin', 'HR']), excelUpload.single('employeeFile'), (req, res) => {
+app.post('/api/employees/bulk-upload', verifyToken, requireRole(['Admin', 'HR']), excelUpload.single('employeeFile'), sanitizeUploadPath, validateUploadSecurity, (req, res) => {
   bulkUploadController.processBulkUpload(req, res);
 });
+
+// Global error handler
+app.use(globalErrorHandler);
 
 // --- Start the server ---
 const PORT = process.env.PORT || 3001;
@@ -2461,8 +2575,8 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server is running on http://0.0.0.0:${PORT}`);
   console.log('🔐 MFA system initialized with enhanced security');
   
-  // Run initial cleanup
-  setTimeout(cleanupExpiredSessions, 5000);
+  // Run initial cleanup after delay to allow database connection
+  setTimeout(cleanupExpiredSessions, 30000);
   
   // Start reminder scheduler
   reminderService.startScheduler();
