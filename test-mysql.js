@@ -22,22 +22,24 @@ async function testConnection() {
     
     // Check if database exists
     console.log('\n2. Checking if database exists...');
-    const [databases] = await connection.execute('SHOW DATABASES LIKE ?', [process.env.DB_DATABASE || 'onboarding_portal']);
+    const dbName = process.env.DB_DATABASE || 'onboarding_portal';
+    const [databases] = await connection.execute('SHOW DATABASES LIKE ?', [dbName]);
     
     if (databases.length === 0) {
       console.log('❌ Database does not exist. Creating it...');
-      await connection.execute(`CREATE DATABASE ${process.env.DB_DATABASE || 'onboarding_portal'}`);
+      // Use identifier escaping for database name
+      await connection.execute('CREATE DATABASE ??', [dbName]);
       console.log('✅ Database created successfully!');
     } else {
       console.log('✅ Database exists!');
     }
     
     // Switch to database
-    await connection.execute(`USE ${process.env.DB_DATABASE || 'onboarding_portal'}`);
+    await connection.execute('USE ??', [dbName]);
     
     // Check if users table exists
     console.log('\n3. Checking tables...');
-    const [tables] = await connection.execute('SHOW TABLES LIKE "users"');
+    const [tables] = await connection.execute('SHOW TABLES LIKE ?', ['users']);
     
     if (tables.length === 0) {
       console.log('❌ Users table does not exist');

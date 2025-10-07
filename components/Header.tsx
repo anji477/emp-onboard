@@ -152,9 +152,16 @@ const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
 
     const switchRole = async (newRole: UserRole) => {
         try {
+            // Get CSRF token
+            const csrfResponse = await fetch('/api/csrf-token', { credentials: 'include' });
+            const csrfData = await csrfResponse.json();
+            
             const response = await fetch(`/api/users/${auth.user.id}/switch-role`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfData.csrfToken
+                },
                 credentials: 'include',
                 body: JSON.stringify({ role: newRole })
             });
@@ -432,7 +439,7 @@ const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
                                     <span className="text-sm text-gray-700 dark:text-gray-300">Change Password</span>
                                 </button>
                                 
-                                {(auth.user.availableRoles && auth.user.availableRoles.length > 1) && (
+                                {(auth.user.role === UserRole.Admin && auth.user.availableRoles && auth.user.availableRoles.length > 1 && auth.user.availableRoles.includes(UserRole.Admin)) && (
                                     <>
                                         <div className="border-t border-gray-100 dark:border-gray-700 my-2"></div>
                                         

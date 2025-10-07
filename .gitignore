@@ -7,6 +7,15 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Security logs (contain sensitive data)
+admin-passwords.log
+reset-tokens.log
+
+# Environment files
+.env
+.env.local
+.env.production
+
 node_modules
 dist
 dist-ssr

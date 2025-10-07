@@ -1,5 +1,7 @@
 // Settings Controller - Handles organization settings CRUD operations
 import db from '../db-mysql.js';
+import { safeJsonParse, safeJsonStringify } from '../utils/safeJson.js';
+import { logError, handleDatabaseError } from '../utils/errorHandler.js';
 
 // In-memory cache for settings (production should use Redis)
 let settingsCache = new Map();
@@ -28,7 +30,7 @@ export const getSettings = async (req, res) => {
     
     rows.forEach(row => {
       const parsedValue = typeof row.setting_value === 'string' 
-        ? JSON.parse(row.setting_value) 
+        ? safeJsonParse(row.setting_value, {}) 
         : row.setting_value;
       
       settings[row.setting_key] = {
@@ -44,8 +46,7 @@ export const getSettings = async (req, res) => {
     cacheTimestamp = now;
     res.json(settings);
   } catch (error) {
-    console.error('Error fetching settings:', error);
-    res.status(500).json({ message: 'Failed to fetch settings' });
+    return handleDatabaseError(error, res, 'settings fetch');
   }
 };
 
@@ -69,7 +70,7 @@ export const updateSettings = async (req, res) => {
     for (const [key, value] of Object.entries(settings)) {
       await connection.execute(
         'INSERT INTO organization_settings (setting_key, setting_value, category, updated_by) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), updated_by = VALUES(updated_by)',
-        [key, JSON.stringify(value), 'system', userId]
+        [key, safeJsonStringify(value), 'system', userId]
       );
     }
 
@@ -83,8 +84,7 @@ export const updateSettings = async (req, res) => {
     
   } catch (error) {
     await connection.rollback();
-    console.error('Error updating settings:', error);
-    res.status(500).json({ message: 'Failed to update settings' });
+    return handleDatabaseError(error, res, 'settings update');
   } finally {
     connection.release();
   }
