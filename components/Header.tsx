@@ -170,7 +170,8 @@ const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
                 window.location.href = '/';
             } else {
                 const error = await response.json();
-                console.error('Switch role failed:', error.message);
+                const sanitizedMessage = (error.message || 'Unknown error').replace(/[\r\n\t]/g, ' ').substring(0, 100);
+                console.error('Switch role failed:', sanitizedMessage);
             }
         } catch (error) {
             console.error('Error switching role:', error);

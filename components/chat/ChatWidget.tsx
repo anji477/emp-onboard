@@ -170,7 +170,8 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ user }) => {
       setPollingInterval(null);
     }
     const text = messageText || inputMessage.trim();
-    console.log('Sending message:', text, 'ConversationId:', conversationId);
+    const sanitizedText = text.replace(/[\r\n\t]/g, ' ').substring(0, 100);
+    console.log('Sending message:', sanitizedText, 'ConversationId:', conversationId);
     
     if (!text) {
       console.log('No message text provided');

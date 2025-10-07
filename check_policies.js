@@ -1,6 +1,8 @@
 import db from './db-mysql.js';
 
 async function checkPolicies() {
+  let hasError = false;
+  
   try {
     console.log('Checking policies table...');
     
@@ -27,8 +29,9 @@ async function checkPolicies() {
     
   } catch (error) {
     console.error('Error checking policies:', error);
+    hasError = true;
   } finally {
-    process.exit(0);
+    process.exit(hasError ? 1 : 0);
   }
 }
 

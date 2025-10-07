@@ -85,7 +85,8 @@ const AssignmentManager: React.FC = () => {
 
   const fetchExistingAssignments = async (userId: number) => {
     try {
-      console.log('Fetching assignments for user:', userId);
+      const sanitizedUserId = String(userId).replace(/[\r\n\t]/g, ' ').substring(0, 20);
+      console.log('Fetching assignments for user:', sanitizedUserId);
       const existing: string[] = [];
       
       // Fetch tasks directly assigned to user

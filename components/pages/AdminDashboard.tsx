@@ -49,7 +49,9 @@ const AdminDashboard: React.FC = () => {
                                    progressData.progress >= 50 ? 'On Track' : 'Delayed'
                         };
                     } catch (error) {
-                        console.error(`Error fetching progress for user ${user.id}:`, error);
+                        const sanitizedUserId = String(user.id).replace(/[\r\n\t]/g, ' ').substring(0, 20);
+                        const sanitizedError = String(error).replace(/[\r\n\t]/g, ' ').substring(0, 100);
+                        console.error(`Error fetching progress for user ${sanitizedUserId}:`, sanitizedError);
                         return { ...user, progress: 0, status: 'Delayed' };
                     }
                 })

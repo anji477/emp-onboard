@@ -120,7 +120,8 @@ const Profile: React.FC = () => {
             } else {
                 const errorData = await response.json();
                 console.error('Profile update failed:', errorData);
-                setProfileMessage(`Error updating profile: ${errorData.message}`);
+                const sanitizedMessage = (errorData.message || 'Unknown error').replace(/[<>"'&]/g, '');
+                setProfileMessage(`Error updating profile: ${sanitizedMessage}`);
                 setProfileMessageType('error');
             }
         } catch (error) {
@@ -269,7 +270,7 @@ const Profile: React.FC = () => {
                             </div>
                             {profileMessage && (
                                 <div className={`text-sm ${profileMessageType === 'success' ? 'text-green-600' : 'text-red-600'}`}>
-                                    {profileMessage}
+                                    <span dangerouslySetInnerHTML={{ __html: profileMessage.replace(/[<>"'&]/g, (match) => ({'<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#x27;', '&': '&amp;'}[match] || match)) }} />
                                 </div>
                             )}
                              <div className="text-right">

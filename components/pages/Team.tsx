@@ -84,8 +84,10 @@ const Team: React.FC = () => {
     };
     
     const toggleNewUserRole = (role: UserRole) => {
-        console.log('Toggling role:', role);
-        console.log('Current roles:', newUser.roles);
+        const sanitizedRole = String(role).replace(/[\r\n\t]/g, ' ').substring(0, 50);
+        const sanitizedRoles = JSON.stringify(newUser.roles).replace(/[\r\n\t]/g, ' ').substring(0, 100);
+        console.log('Toggling role:', sanitizedRole);
+        console.log('Current roles:', sanitizedRoles);
         setNewUser(prev => {
             const newRoles = prev.roles.includes(role)
                 ? prev.roles.filter(r => r !== role)

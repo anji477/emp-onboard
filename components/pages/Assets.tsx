@@ -313,7 +313,8 @@ const Assets: React.FC = () => {
     };
     
     const handleDeleteAsset = async (assetId: number) => {
-        console.log('handleDeleteAsset called with ID:', assetId);
+        const sanitizedAssetId = String(assetId).replace(/[\r\n\t]/g, ' ').substring(0, 20);
+        console.log('handleDeleteAsset called with ID:', sanitizedAssetId);
         if (!confirm('Are you sure you want to delete this asset?')) return;
         
         try {

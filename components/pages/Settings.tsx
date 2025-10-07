@@ -417,13 +417,16 @@ const Settings: React.FC = () => {
                     const reader = new FileReader();
                     reader.onload = (event) => {
                       const faviconData = event.target?.result as string;
-                      updateSetting('company_info', 'favicon', faviconData);
-                      // Update favicon in browser
-                      const link = document.querySelector("link[rel*='icon']") as HTMLLinkElement || document.createElement('link');
-                      link.type = 'image/x-icon';
-                      link.rel = 'shortcut icon';
-                      link.href = faviconData;
-                      document.getElementsByTagName('head')[0].appendChild(link);
+                      // Validate data URL format to prevent XSS
+                      if (faviconData && faviconData.startsWith('data:image/') && /^data:image\/(png|jpeg|jpg|x-icon|svg\+xml);base64,/.test(faviconData)) {
+                        updateSetting('company_info', 'favicon', faviconData);
+                        // Update favicon in browser with sanitized data
+                        const link = document.querySelector("link[rel*='icon']") as HTMLLinkElement || document.createElement('link');
+                        link.type = 'image/x-icon';
+                        link.rel = 'shortcut icon';
+                        link.href = faviconData;
+                        document.getElementsByTagName('head')[0].appendChild(link);
+                      }
                     };
                     reader.readAsDataURL(file);
                   }
