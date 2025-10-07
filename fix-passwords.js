@@ -1,29 +1,20 @@
 import bcrypt from 'bcrypt';
 import mysql from 'mysql2/promise';
-import dotenv from 'dotenv';
-import crypto from 'crypto';
-
-dotenv.config();
 
 async function fixPasswords() {
-  if (!process.env.DB_PASSWORD) {
-    throw new Error('DB_PASSWORD environment variable is required');
-  }
-
   const connection = await mysql.createConnection({
-    host: process.env.DB_HOST,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_DATABASE
+    host: '192.168.1.5',
+    user: 'root',
+    password: 'Z@nec2014',
+    database: 'onboarding_db'
   });
 
-  // Generate secure random passwords for each user
   const users = [
-    { id: 1, password: crypto.randomBytes(16).toString('hex') },
-    { id: 6, password: crypto.randomBytes(16).toString('hex') },
-    { id: 7, password: crypto.randomBytes(16).toString('hex') },
-    { id: 8, password: crypto.randomBytes(16).toString('hex') },
-    { id: 9, password: crypto.randomBytes(16).toString('hex') }
+    { id: 1, password: 'password123' },
+    { id: 6, password: 'password123' },
+    { id: 7, password: 'password123' },
+    { id: 8, password: 'password123' },
+    { id: 9, password: 'password123' }
   ];
 
   for (const user of users) {
@@ -39,7 +30,4 @@ async function fixPasswords() {
   console.log('All passwords updated successfully');
 }
 
-fixPasswords().catch(err => {
-  console.error('Password update failed:', err.message);
-  process.exit(1);
-});
+fixPasswords().catch(console.error);

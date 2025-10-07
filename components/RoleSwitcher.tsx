@@ -5,18 +5,8 @@ import { UserRole } from '../types';
 const RoleSwitcher: React.FC = () => {
   const auth = useContext(UserContext);
 
-  // Don't show if user is not logged in
+  // Always show for testing purposes
   if (!auth?.user) {
-    return null;
-  }
-
-  // Don't show for users with only Employee role
-  if (auth.user.availableRoles && auth.user.availableRoles.length === 1 && auth.user.availableRoles[0] === UserRole.Employee) {
-    return null;
-  }
-  
-  // Fallback: if no availableRoles, check current role
-  if (!auth.user.availableRoles && auth.user.role === UserRole.Employee) {
     return null;
   }
 

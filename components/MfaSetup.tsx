@@ -9,13 +9,11 @@ interface MfaSetupProps {
 }
 
 interface SetupData {
-  sessionId: string;
-  sessionToken?: string;
+  sessionToken: string;
   secret: string;
-  qrCode: string;
-  qrCodeUrl?: string;
-  accountName?: string;
-  issuer?: string;
+  qrCodeUrl: string;
+  accountName: string;
+  issuer: string;
 }
 
 const MfaSetup: React.FC<MfaSetupProps> = ({ userEmail, userName, onComplete }) => {
@@ -37,20 +35,16 @@ const MfaSetup: React.FC<MfaSetupProps> = ({ userEmail, userName, onComplete }) 
     setSessionExpired(false);
 
     try {
-      const response = await fetch('/api/mfa/setup', {
+      const response = await fetch('/api/mfa/start-setup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include'
+        body: JSON.stringify({ userEmail })
       });
 
       const data = await response.json();
 
-      if (response.ok && data.success) {
-        setSetupData({
-          sessionId: data.sessionId,
-          secret: data.secret,
-          qrCode: data.qrCode
-        });
+      if (response.ok) {
+        setSetupData(data);
       } else {
         setError(data.message || 'Failed to start MFA setup');
       }
@@ -62,14 +56,13 @@ const MfaSetup: React.FC<MfaSetupProps> = ({ userEmail, userName, onComplete }) 
   };
 
   const validateSession = async () => {
-    if (!setupData?.sessionId) return false;
+    if (!setupData?.sessionToken) return false;
 
     try {
       const response = await fetch('/api/mfa/validate-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ sessionToken: setupData.sessionId })
+        body: JSON.stringify({ sessionToken: setupData.sessionToken })
       });
 
       const data = await response.json();
@@ -100,9 +93,8 @@ const MfaSetup: React.FC<MfaSetupProps> = ({ userEmail, userName, onComplete }) 
       const response = await fetch('/api/mfa/verify-setup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({
-          sessionId: setupData.sessionId,
+          sessionToken: setupData.sessionToken,
           code: verificationCode.trim()
         })
       });
@@ -218,7 +210,7 @@ const MfaSetup: React.FC<MfaSetupProps> = ({ userEmail, userName, onComplete }) 
                 <h3 className="text-lg font-medium text-gray-900 mb-4">Scan QR Code</h3>
                 <div className="bg-white p-4 rounded-lg border-2 border-gray-200 inline-block">
                   <img 
-                    src={setupData.qrCode}
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(setupData.qrCodeUrl)}`}
                     alt="MFA QR Code"
                     className="w-48 h-48"
                   />
@@ -234,6 +226,8 @@ const MfaSetup: React.FC<MfaSetupProps> = ({ userEmail, userName, onComplete }) 
                   Manual Entry
                 </h4>
                 <div className="bg-gray-50 p-3 rounded">
+                  <p className="text-xs text-gray-600 mb-1">Account: {setupData.accountName}</p>
+                  <p className="text-xs text-gray-600 mb-1">Issuer: {setupData.issuer}</p>
                   <p className="text-xs text-gray-600">Secret: <span className="font-mono">{setupData.secret}</span></p>
                 </div>
               </div>

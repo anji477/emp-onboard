@@ -41,30 +41,10 @@ const MfaSetup: React.FC<MfaSetupProps> = ({
   const [success, setSuccess] = useState('');
   const [sessionExpired, setSessionExpired] = useState(false);
   const [currentSessionToken, setCurrentSessionToken] = useState(sessionToken);
-  const [csrfToken, setCsrfToken] = useState('');
-
-  // Get CSRF token on component mount
-  useEffect(() => {
-    const getCsrfToken = async () => {
-      try {
-        const response = await fetch('/api/csrf-token', {
-          credentials: 'include'
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setCsrfToken(data.csrfToken);
-        }
-      } catch (error) {
-        console.error('Failed to get CSRF token:', error);
-      }
-    };
-    getCsrfToken();
-  }, []);
 
   useEffect(() => {
-    if (isRequired) {
-      // Always setup authenticator for required MFA, regardless of session token
-      setupAuthenticator();
+    if (isRequired && sessionToken) {
+      validateSession();
     } else if (!isRequired) {
       setupAuthenticator();
     }
@@ -80,10 +60,7 @@ const MfaSetup: React.FC<MfaSetupProps> = ({
     try {
       const response = await fetch('/api/mfa/validate-session', {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'X-CSRF-Token': csrfToken
-        },
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ sessionToken: currentSessionToken })
       });
@@ -109,13 +86,21 @@ const MfaSetup: React.FC<MfaSetupProps> = ({
     setError('');
     
     try {
-      const response = await fetch('/api/mfa/setup', {
+      const requestBody: any = {};
+      
+      if (currentSessionToken) {
+        requestBody.sessionToken = currentSessionToken;
+      }
+      
+      if (userEmail) {
+        requestBody.userEmail = userEmail;
+      }
+      
+      const response = await fetch('/api/mfa/restart-setup', {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'X-CSRF-Token': csrfToken
-        },
-        credentials: 'include'
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(requestBody)
       });
       
       if (response.ok) {
@@ -136,7 +121,7 @@ const MfaSetup: React.FC<MfaSetupProps> = ({
         
         // Go directly to QR code step
         setStep(1);
-        setSuccess('New QR code generated!');
+        setSuccess('New QR code and secret generated!');
         setTimeout(() => setSuccess(''), 3000);
       } else {
         const error = await response.json();
@@ -162,14 +147,11 @@ const MfaSetup: React.FC<MfaSetupProps> = ({
     
     try {
       const endpoint = isRequired ? '/api/mfa/complete-setup' : '/api/mfa/setup-authenticator';
-      const body = isRequired ? { sessionToken: currentSessionToken || undefined, method } : {};
+      const body = isRequired ? { sessionToken: currentSessionToken, method } : {};
       
       const response = await fetch(endpoint, {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'X-CSRF-Token': csrfToken
-        },
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify(body)
       });
@@ -185,10 +167,6 @@ const MfaSetup: React.FC<MfaSetupProps> = ({
             issuer: data.issuer,
             userEmail: data.userEmail
           });
-          // Update session token if provided
-          if (data.sessionToken) {
-            setCurrentSessionToken(data.sessionToken);
-          }
           setStep(1);
         } else {
           setSuccess('Email OTP enabled successfully');
@@ -219,42 +197,7 @@ const MfaSetup: React.FC<MfaSetupProps> = ({
     }
   };
   
-  const setupAuthenticator = async () => {
-    setLoading(true);
-    setError('');
-    
-    try {
-      const response = await fetch('/api/mfa/setup', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'X-CSRF-Token': csrfToken
-        },
-        credentials: 'include'
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setSetupData({
-          secret: data.secret,
-          qrCode: data.qrCode,
-          manualEntryKey: data.manualEntryKey,
-          accountName: data.accountName,
-          issuer: data.issuer,
-          userEmail: data.userEmail
-        });
-        setCurrentSessionToken(data.sessionToken);
-        setStep(1);
-      } else {
-        const error = await response.json();
-        setError(error.message || 'Failed to setup MFA');
-      }
-    } catch (error) {
-      setError('Network error. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const setupAuthenticator = () => setupMethod('authenticator');
 
   const verifySetup = async () => {
     if (!verificationCode || !/^\d{6}$/.test(verificationCode)) {
@@ -266,17 +209,13 @@ const MfaSetup: React.FC<MfaSetupProps> = ({
     setError('');
     
     try {
-      const body = { 
-        token: verificationCode,
-        sessionToken: currentSessionToken || undefined
-      };
+      const body = isRequired 
+        ? { token: verificationCode, sessionToken: currentSessionToken }
+        : { token: verificationCode };
         
       const response = await fetch('/api/mfa/verify-setup', {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'X-CSRF-Token': csrfToken
-        },
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify(body)
       });
@@ -500,18 +439,10 @@ const MfaSetup: React.FC<MfaSetupProps> = ({
               <div className="mb-6">
                 <h3 className="font-medium mb-3">Option 1: Scan QR Code</h3>
                 <div className="bg-white p-4 rounded-lg inline-block mb-4">
-                  {setupData.qrCode ? (
-                    <img 
-                      src={setupData.qrCode} 
-                      alt="MFA QR Code" 
-                      className="w-48 h-48"
-                    />
-                  ) : (
-                    <QRCodeSVG 
-                      value={setupData.qrCodeUrl || `otpauth://totp/${encodeURIComponent(setupData.accountName || `${setupData.issuer || 'MyApp'} (${setupData.userEmail || userEmail})`)}?secret=${setupData.manualEntryKey}&issuer=${encodeURIComponent(setupData.issuer || 'MyApp')}`}
-                      size={200} 
-                    />
-                  )}
+                  <QRCodeSVG 
+                    value={`otpauth://totp/${encodeURIComponent(setupData.accountName || `${setupData.issuer || 'MyApp'} (${setupData.userEmail || userEmail})`)}?secret=${setupData.manualEntryKey}&issuer=${encodeURIComponent(setupData.issuer || 'MyApp')}`}
+                    size={200} 
+                  />
                 </div>
               </div>
               
