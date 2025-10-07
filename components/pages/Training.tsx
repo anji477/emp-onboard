@@ -1,5 +1,4 @@
 import React, { useState, useRef, useContext, useEffect } from 'react';
-import { mockTrainingModules } from '../../data/mockData';
 import { TrainingModule, UserRole } from '../../types';
 import Card from '../common/Card';
 import Icon from '../common/Icon';
@@ -52,11 +51,11 @@ const Training: React.FC = () => {
                 }));
                 setModules(formattedModules);
             } else {
-                setModules(mockTrainingModules);
+                setModules([]);
             }
         } catch (error) {
             console.error('Error fetching modules:', error);
-            setModules(mockTrainingModules);
+            setModules([]);
         } finally {
             setLoading(false);
         }

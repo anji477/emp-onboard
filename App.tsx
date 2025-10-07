@@ -21,7 +21,6 @@ import ResetPassword from './components/pages/ResetPassword';
 
 import MaintenancePage from './components/MaintenancePage';
 import { User, UserRole } from './types';
-import { mockUser, mockAdmin } from './data/mockData';
 import { ThemeProvider } from './contexts/ThemeContext';
 import ChatWidget from './components/chat/ChatWidget';
 
@@ -60,9 +59,8 @@ const App: React.FC = () => {
   }, []);
 
   const login = useCallback((role: UserRole) => {
-    const userData = role === UserRole.Admin ? mockAdmin : mockUser;
-    setUser(userData);
-    localStorage.setItem('user', JSON.stringify(userData));
+    // Login is now handled by the Login component via API
+    console.log('Login callback - should not be used with real auth');
   }, []);
 
   const logout = useCallback(async () => {

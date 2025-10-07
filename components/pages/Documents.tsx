@@ -1,5 +1,4 @@
 import React, { useState, useRef, useContext } from 'react';
-import { mockUserDocuments } from '../../data/mockData';
 import { UserDocument, DocumentStatus, UserRole } from '../../types';
 import Card from '../common/Card';
 import Icon from '../common/Icon';
@@ -95,10 +94,10 @@ const Documents: React.FC = () => {
                 }));
                 setUserDocuments(formattedDocs);
             } else {
-                setUserDocuments(mockUserDocuments);
+                setUserDocuments([]);
             }
         } catch (error) {
-            setUserDocuments(mockUserDocuments);
+            setUserDocuments([]);
         } finally {
             setLoading(false);
         }

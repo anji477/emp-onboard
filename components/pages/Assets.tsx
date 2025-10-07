@@ -1,5 +1,4 @@
 import React, { useState, useContext, useMemo } from 'react';
-import { mockUserAssets, mockAllAssets, mockEmployeesForAssignment } from '../../data/mockData';
 import { AssetStatus, ITAsset, UserRole } from '../../types';
 import Card from '../common/Card';
 import Icon from '../common/Icon';
@@ -157,7 +156,7 @@ const AdminAssetView: React.FC<{ allAssets: ITAsset[]; onAssetClick: (asset: ITA
                     </select>
                      <select value={employeeFilter} onChange={e => setEmployeeFilter(e.target.value)} className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
                         <option value="">All Employees</option>
-                        {mockEmployeesForAssignment.map(e => <option key={e.id} value={e.name}>{e.name}</option>)}
+                        {[].map((e: any) => <option key={e.id} value={e.name}>{e.name}</option>)}
                     </select>
                 </div>
             </div>

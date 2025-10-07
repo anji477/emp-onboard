@@ -1087,20 +1087,7 @@ const Settings: React.FC = () => {
             
             <div className="pt-6 border-t border-gray-200 dark:border-gray-600">
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Test Email Configuration</h3>
-              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
-                <div className="flex items-start">
-                  <Icon name="information-circle" className="h-5 w-5 text-blue-400 mt-0.5 mr-3 flex-shrink-0" />
-                  <div className="text-sm text-blue-700 dark:text-blue-300">
-                    <p className="font-medium mb-1">Gmail Setup Instructions:</p>
-                    <ul className="list-disc list-inside space-y-1 text-xs">
-                      <li>Enable 2-Factor Authentication on your Gmail account</li>
-                      <li>Generate an App Password (not your regular Gmail password)</li>
-                      <li>Use your Gmail address as SMTP User and App Password as SMTP Password</li>
-                      <li>Enter test email address to verify configuration</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
+
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                 <div className="md:col-span-2">

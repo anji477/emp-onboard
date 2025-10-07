@@ -1,6 +1,5 @@
 
 import React from 'react';
-import { mockFeedbackSurveys } from '../../data/mockData';
 import Card from '../common/Card';
 import Icon from '../common/Icon';
 import Button from '../common/Button';
@@ -48,7 +47,7 @@ const Feedback: React.FC = () => {
             <Card>
                 <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4">Feedback Surveys</h2>
                 <div className="space-y-4">
-                    {mockFeedbackSurveys.map(survey => (
+                    {[].map((survey: any) => (
                         <div key={survey.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
                             <div>
                                 <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{survey.title}</p>
