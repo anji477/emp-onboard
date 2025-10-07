@@ -11,9 +11,15 @@ export const verifyCsrfToken = (req, res, next) => {
       req.path === '/api/forgot-password' || 
       req.path === '/api/reset-password' ||
       req.path === '/api/maintenance-status' ||
+      req.path === '/api/public-settings' ||
       req.path.startsWith('/api/mfa/') ||
       req.path.startsWith('/api/chat/') ||
+      req.path.startsWith('/api/notifications/') ||
       req.path === '/api/users/invite' ||
+      req.path === '/api/me' ||
+      req.path === '/api/test' ||
+      req.path.startsWith('/api/init-') ||
+      req.path.startsWith('/api/migrate-') ||
       req.path === '/api/documents/upload' ||
       req.path.startsWith('/api/employees/') ||
       req.path.startsWith('/api/documents/') && req.method === 'POST' && req.headers['content-type']?.includes('multipart/form-data')) {

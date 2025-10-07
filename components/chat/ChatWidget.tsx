@@ -378,13 +378,59 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ user }) => {
   if (!isOpen) {
     return (
       <div className="fixed bottom-6 right-6 z-50">
+        {/* Chat Options Menu */}
+        <div className={`absolute bottom-16 right-0 bg-white rounded-lg shadow-xl border border-gray-200 p-2 space-y-2 transition-all duration-300 ${showChannelSelector ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible translate-y-2'}`}>
+          <button
+            onClick={() => {
+              setChannelType('ai');
+              setShowChannelSelector(false);
+              setIsOpen(true);
+            }}
+            className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-indigo-50 transition-colors group"
+          >
+            <div className="bg-gradient-to-r from-indigo-500 to-purple-500 p-2 rounded-full">
+              <Icon name="sparkles" className="w-4 h-4 text-white" />
+            </div>
+            <div className="text-left">
+              <div className="font-medium text-gray-900 text-sm">Lava AI</div>
+              <div className="text-xs text-gray-500">Instant AI assistance</div>
+            </div>
+            <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse ml-auto"></div>
+          </button>
+          
+          <button
+            onClick={() => {
+              setChannelType('hr');
+              setShowChannelSelector(false);
+              setIsOpen(true);
+            }}
+            className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-green-50 transition-colors group"
+          >
+            <div className="bg-gradient-to-r from-green-500 to-emerald-500 p-2 rounded-full">
+              <Icon name="users" className="w-4 h-4 text-white" />
+            </div>
+            <div className="text-left">
+              <div className="font-medium text-gray-900 text-sm">HR Team</div>
+              <div className="text-xs text-gray-500">Human support</div>
+            </div>
+          </button>
+        </div>
+        
+        {/* Main Chat Button */}
         <button
-          onClick={() => setIsOpen(true)}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-full p-4 shadow-lg transition-all duration-200 flex items-center gap-2"
+          onClick={() => setShowChannelSelector(!showChannelSelector)}
+          className={`bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-full p-4 shadow-lg transition-all duration-300 ${showChannelSelector ? 'rotate-45' : 'rotate-0'}`}
         >
-          <Icon name="chat-bubble-left-right" className="w-6 h-6" />
-          <span className="hidden sm:inline font-medium">Chat with Lava</span>
+          <Icon name={showChannelSelector ? "x-mark" : "chat-bubble-left-right"} className="w-6 h-6" />
         </button>
+        
+        {/* Backdrop */}
+        {showChannelSelector && (
+          <div 
+            className="fixed inset-0 -z-10" 
+            onClick={() => setShowChannelSelector(false)}
+          />
+        )}
       </div>
     );
   }
@@ -611,7 +657,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ user }) => {
               }}
               className="mb-2 text-indigo-600 hover:text-indigo-700 text-sm flex items-center gap-1"
             >
-              <Icon name="arrow-left" className="w-4 h-4" />
+              <Icon name="list-bullet" className="w-4 h-4" />
               Back to conversations
             </button>
           )}

@@ -115,7 +115,10 @@ const HRDocuments: React.FC = () => {
         try {
             const response = await fetch('/api/documents/bulk-action', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                },
                 body: JSON.stringify({
                     action: bulkAction.action,
                     documentIds: selectedDocs,
@@ -142,7 +145,10 @@ const HRDocuments: React.FC = () => {
             const template = templates.find(t => t.id === selectedTemplate);
             const response = await fetch('/api/documents/assign', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                },
                 body: JSON.stringify({
                     documentName: template?.name,
                     userIds: selectedUsers,
@@ -169,7 +175,10 @@ const HRDocuments: React.FC = () => {
         try {
             const response = await fetch('/api/documents/templates', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                },
                 body: JSON.stringify(newTemplate)
             });
 
@@ -183,12 +192,32 @@ const HRDocuments: React.FC = () => {
         }
     };
 
+    const handleDocumentAction = async (documentId: string, status: string, rejectionReason?: string) => {
+        try {
+            const response = await fetch(`/api/documents/${documentId}/status`, {
+                method: 'PUT',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                },
+                body: JSON.stringify({ status, rejectionReason })
+            });
+
+            if (response.ok) {
+                fetchDocuments();
+                fetchStats();
+            }
+        } catch (error) {
+            console.error('Error updating document status:', error);
+        }
+    };
+
     const filteredDocuments = documents.filter(doc => {
         const matchesSearch = doc.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            doc.userName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            doc.userEmail?.toLowerCase().includes(searchTerm.toLowerCase());
+                            doc.user_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            doc.user_email?.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesStatus = filters.status === 'all' || doc.status.toLowerCase() === filters.status;
-        const matchesUser = filters.user === 'all' || doc.userId === filters.user;
+        const matchesUser = filters.user === 'all' || doc.user_id.toString() === filters.user;
         const matchesPriority = filters.priority === 'all' || doc.priority === filters.priority;
 
         return matchesSearch && matchesStatus && matchesUser && matchesPriority;
@@ -430,8 +459,8 @@ const HRDocuments: React.FC = () => {
                                         />
                                     </td>
                                     <td className="px-6 py-4">
-                                        <div className="text-xs font-medium text-gray-900">{doc.userName}</div>
-                                        <div className="text-xs text-gray-500">{doc.userEmail}</div>
+                                        <div className="text-xs font-medium text-gray-900">{doc.user_name || 'Unknown User'}</div>
+                                        <div className="text-xs text-gray-500">{doc.user_email}</div>
                                     </td>
                                     <td className="px-6 py-4">
                                         <div className="text-xs text-gray-900">{doc.name}</div>
@@ -452,10 +481,18 @@ const HRDocuments: React.FC = () => {
                                         <div className="flex gap-2">
                                             {doc.status === DocumentStatus.Uploaded && (
                                                 <>
-                                                    <Button size="sm" className="bg-green-100 text-green-700 hover:bg-green-200">
+                                                    <Button 
+                                                        size="sm" 
+                                                        className="bg-green-100 text-green-700 hover:bg-green-200"
+                                                        onClick={() => handleDocumentAction(doc.id, 'Verified')}
+                                                    >
                                                         Verify
                                                     </Button>
-                                                    <Button size="sm" className="bg-red-100 text-red-700 hover:bg-red-200">
+                                                    <Button 
+                                                        size="sm" 
+                                                        className="bg-red-100 text-red-700 hover:bg-red-200"
+                                                        onClick={() => handleDocumentAction(doc.id, 'Rejected', 'Document rejected by HR')}
+                                                    >
                                                         Reject
                                                     </Button>
                                                 </>

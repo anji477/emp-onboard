@@ -1715,7 +1715,7 @@ app.get('/api/documents/all', verifyToken, requireRole(['Admin', 'HR']), async (
       SELECT 
         ud.id,
         ud.user_id,
-        ud.name,
+        ud.name as document_name,
         ud.status,
         ud.action_date,
         ud.rejection_reason,
@@ -1744,22 +1744,26 @@ app.get('/api/documents/all', verifyToken, requireRole(['Admin', 'HR']), async (
         ud.uploaded_at DESC
     `);
     
-    // Format response to match frontend expectations
-    const formattedRows = rows.map(row => ({
-      id: row.id.toString(),
-      name: row.name,
-      status: row.computed_status,
-      action_date: row.action_date,
-      rejection_reason: row.rejection_reason,
-      user_id: row.user_id,
-      user_name: row.user_name || 'Unknown User',
-      user_email: row.user_email || '',
-      file_url: row.file_url,
-      file_name: row.file_name,
-      file_size: row.file_size,
-      uploaded_at: row.uploaded_at,
-      priority: row.priority || 'Medium'
-    }));
+    const formattedRows = rows.map(row => {
+      console.log('Raw row data:', { user_id: row.user_id, user_name: row.user_name, document_name: row.document_name });
+      return {
+        id: row.id.toString(),
+        name: row.document_name,
+        status: row.computed_status,
+        action_date: row.action_date,
+        rejection_reason: row.rejection_reason,
+        user_id: row.user_id,
+        user_name: row.user_name,
+        user_email: row.user_email,
+        file_url: row.file_url,
+        file_name: row.file_name,
+        file_size: row.file_size,
+        uploaded_at: row.uploaded_at,
+        priority: row.priority || 'Medium'
+      };
+    });
+    
+    console.log('Final API response sample:', formattedRows[0]);
     
     res.json(formattedRows);
   } catch (error) {

@@ -112,9 +112,9 @@ router.get('/all', async (req, res) => {
                 ud.file_size,
                 ud.file_type,
                 ud.uploaded_at,
-                ud.user_id as userId,
-                u.name as userName,
-                u.email as userEmail,
+                ud.user_id as user_id,
+                u.name as user_name,
+                u.email as user_email,
                 'Medium' as priority
             FROM user_documents ud
             LEFT JOIN users u ON ud.user_id = u.id
