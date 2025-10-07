@@ -6,6 +6,7 @@ import Icon from '../common/Icon';
 import Button from '../common/Button';
 import Modal from '../common/Modal';
 import Loader from '../common/Loader';
+import FileInput from '../common/FileInput';
 import { UserContext } from '../../App';
 
 const Training: React.FC = () => {
@@ -575,29 +576,55 @@ const Training: React.FC = () => {
                             <p className="text-xs text-gray-500 mt-1">Format: "30 minutes", "1 hour", "45 mins"</p>
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                File
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Training File
                             </label>
+                            <FileInput
+                                accept=".pdf,.doc,.docx,.ppt,.pptx,.mp4,.avi,.mov,.wmv,.flv,.webm"
+                                placeholder="Upload training file"
+                                maxSize={100}
+                                onChange={(files) => {
+                                    if (files && files[0] && fileInputRef.current) {
+                                        // Create a new FileList-like object
+                                        const dt = new DataTransfer();
+                                        dt.items.add(files[0]);
+                                        fileInputRef.current.files = dt.files;
+                                    }
+                                }}
+                            />
                             <input
                                 type="file"
                                 ref={fileInputRef}
                                 accept=".pdf,.doc,.docx,.ppt,.pptx,.mp4,.avi,.mov,.wmv,.flv,.webm"
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                className="hidden"
                                 required
                             />
-                            <p className="text-xs text-gray-500 mt-1">Supported: PDF, DOC, DOCX, PPT, PPTX, MP4, AVI, MOV, WMV, FLV, WEBM (Max: 100MB)</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Supported: PDF, DOC, DOCX, PPT, PPTX, MP4, AVI, MOV, WMV, FLV, WEBM (Max: 100MB)</p>
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                 Thumbnail (Optional)
                             </label>
+                            <FileInput
+                                accept="image/jpeg,image/jpg,image/png,image/webp"
+                                placeholder="Upload thumbnail image"
+                                maxSize={2}
+                                onChange={(files) => {
+                                    if (files && files[0] && thumbnailInputRef.current) {
+                                        // Create a new FileList-like object
+                                        const dt = new DataTransfer();
+                                        dt.items.add(files[0]);
+                                        thumbnailInputRef.current.files = dt.files;
+                                    }
+                                }}
+                            />
                             <input
                                 type="file"
                                 ref={thumbnailInputRef}
                                 accept="image/jpeg,image/jpg,image/png,image/webp"
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                className="hidden"
                             />
-                            <p className="text-xs text-gray-500 mt-1">JPG, PNG, WEBP (Max: 2MB). If not provided, a default thumbnail will be used.</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">JPG, PNG, WEBP (Max: 2MB). If not provided, a default thumbnail will be used.</p>
                         </div>
                         <div className="flex justify-end gap-2 pt-4">
                             <Button type="button" variant="secondary" onClick={() => setShowAddModal(false)}>

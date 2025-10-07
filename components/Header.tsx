@@ -439,7 +439,7 @@ const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
                                     <span className="text-sm text-gray-700 dark:text-gray-300">Change Password</span>
                                 </button>
                                 
-                                {(auth.user.role === UserRole.Admin && auth.user.availableRoles && auth.user.availableRoles.length > 1 && auth.user.availableRoles.includes(UserRole.Admin)) && (
+                                {(auth.user.availableRoles && auth.user.availableRoles.length > 1) && (
                                     <>
                                         <div className="border-t border-gray-100 dark:border-gray-700 my-2"></div>
                                         
@@ -448,26 +448,19 @@ const Header: React.FC<HeaderProps> = ({ setSidebarOpen }) => {
                                                 <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Switch Role</span>
                                             </div>
                                             <div className="flex gap-2">
-                                                <button
-                                                    onClick={() => switchRole(UserRole.Admin)}
-                                                    className={`flex-1 px-3 py-2 text-xs font-medium rounded-lg transition-all duration-200 ${
-                                                        auth.user.role === UserRole.Admin 
-                                                            ? 'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg' 
-                                                            : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-900/20'
-                                                    }`}
-                                                >
-                                                    Admin
-                                                </button>
-                                                <button
-                                                    onClick={() => switchRole(UserRole.Employee)}
-                                                    className={`flex-1 px-3 py-2 text-xs font-medium rounded-lg transition-all duration-200 ${
-                                                        auth.user.role === UserRole.Employee 
-                                                            ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg' 
-                                                            : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-green-50 dark:hover:bg-green-900/20'
-                                                    }`}
-                                                >
-                                                    Employee
-                                                </button>
+                                                {auth.user.availableRoles.map((role) => (
+                                                    <button
+                                                        key={role}
+                                                        onClick={() => switchRole(role as UserRole)}
+                                                        className={`flex-1 px-3 py-2 text-xs font-medium rounded-lg transition-all duration-200 ${
+                                                            auth.user.role === role 
+                                                                ? 'bg-gradient-to-r from-indigo-500 to-indigo-600 text-white shadow-lg' 
+                                                                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/20'
+                                                        }`}
+                                                    >
+                                                        {role}
+                                                    </button>
+                                                ))}
                                             </div>
                                         </div>
                                         

@@ -4,6 +4,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import Card from '../common/Card';
 import Button from '../common/Button';
 import Icon from '../common/Icon';
+import FileInput from '../common/FileInput';
 import { getCurrentTimeInTimezone, detectUserTimezone, formatWorkingHours, isWithinWorkingHours } from '../../utils/timezoneUtils';
 
 interface SettingsData {
@@ -390,16 +391,16 @@ const Settings: React.FC = () => {
             
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Logo Upload</label>
-              <input
-                type="file"
+              <FileInput
                 accept="image/png,image/jpeg,image/jpg,image/svg+xml"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
+                placeholder="Upload company logo"
+                maxSize={5}
+                showPreview={true}
+                currentFile={settings.company_info.logo}
+                previewAlt="Logo"
+                onChange={(files) => {
+                  const file = files?.[0];
                   if (file) {
-                    if (file.size > 5 * 1024 * 1024) {
-                      setNotification('Logo file size must be less than 5MB');
-                      return;
-                    }
                     const reader = new FileReader();
                     reader.onload = (event) => {
                       updateSetting('company_info', 'logo', event.target?.result as string);
@@ -407,26 +408,22 @@ const Settings: React.FC = () => {
                     reader.readAsDataURL(file);
                   }
                 }}
-                className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200"
               />
-              <p className="text-xs text-gray-500 mt-1">PNG, JPEG, JPG, SVG (max 5MB)</p>
-              {settings.company_info.logo && (
-                <img src={settings.company_info.logo} alt="Logo" className="mt-2 h-12 w-auto border rounded" />
-              )}
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">PNG, JPEG, JPG, SVG (max 5MB)</p>
             </div>
             
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Favicon Upload</label>
-              <input
-                type="file"
+              <FileInput
                 accept="image/x-icon,image/png,image/svg+xml"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
+                placeholder="Upload favicon"
+                maxSize={1}
+                showPreview={true}
+                currentFile={settings.company_info.favicon}
+                previewAlt="Favicon"
+                onChange={(files) => {
+                  const file = files?.[0];
                   if (file) {
-                    if (file.size > 1 * 1024 * 1024) {
-                      setNotification('Favicon file size must be less than 1MB');
-                      return;
-                    }
                     const reader = new FileReader();
                     reader.onload = (event) => {
                       const faviconData = event.target?.result as string;
@@ -441,12 +438,8 @@ const Settings: React.FC = () => {
                     reader.readAsDataURL(file);
                   }
                 }}
-                className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200"
               />
-              <p className="text-xs text-gray-500 mt-1">ICO, PNG, SVG (max 1MB, recommended 32x32px)</p>
-              {settings.company_info.favicon && (
-                <img src={settings.company_info.favicon} alt="Favicon" className="mt-2 h-6 w-6 border rounded" />
-              )}
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">ICO, PNG, SVG (max 1MB, recommended 32x32px)</p>
             </div>
             
             <div className="md:col-span-2">
@@ -1254,9 +1247,16 @@ const Settings: React.FC = () => {
                   <button
                     onClick={async () => {
                       try {
+                        // Get CSRF token
+                        const csrfResponse = await fetch('/api/csrf-token', { credentials: 'include' });
+                        const csrfData = await csrfResponse.json();
+                        
                         const response = await fetch('/api/test-email', {
                           method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
+                          headers: { 
+                            'Content-Type': 'application/json',
+                            'X-CSRF-Token': csrfData.csrfToken
+                          },
                           credentials: 'include',
                           body: JSON.stringify({ testEmail })
                         });

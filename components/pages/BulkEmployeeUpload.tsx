@@ -3,6 +3,7 @@ import Card from '../common/Card';
 import Button from '../common/Button';
 import Icon from '../common/Icon';
 import Modal from '../common/Modal';
+import FileInput from '../common/FileInput';
 
 interface UploadResult {
   row: number;
@@ -31,42 +32,10 @@ const BulkEmployeeUpload: React.FC = () => {
   const [uploading, setUploading] = useState(false);
   const [uploadResult, setUploadResult] = useState<BulkUploadResponse | null>(null);
   const [showResults, setShowResults] = useState(false);
-  const [dragActive, setDragActive] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleDrag = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === 'dragenter' || e.type === 'dragover') {
-      setDragActive(true);
-    } else if (e.type === 'dragleave') {
-      setDragActive(false);
-    }
-  };
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const droppedFile = e.dataTransfer.files[0];
-      if (droppedFile.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || 
-          droppedFile.type === 'application/vnd.ms-excel' ||
-          droppedFile.name.endsWith('.xlsx') || 
-          droppedFile.name.endsWith('.xls')) {
-        setFile(droppedFile);
-      } else {
-        alert('Please select an Excel file (.xlsx or .xls)');
-      }
-    }
-  };
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
-    }
-  };
 
   const downloadTemplate = async () => {
     try {
@@ -130,9 +99,6 @@ const BulkEmployeeUpload: React.FC = () => {
     setFile(null);
     setUploadResult(null);
     setShowResults(false);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
   };
 
   return (
@@ -158,64 +124,26 @@ const BulkEmployeeUpload: React.FC = () => {
           <div className="p-6">
             <h2 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">Upload Excel File</h2>
             
-            {/* Drag and Drop Area */}
-            <div
-              className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-                dragActive
-                  ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
-                  : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
-              }`}
-              onDragEnter={handleDrag}
-              onDragLeave={handleDrag}
-              onDragOver={handleDrag}
-              onDrop={handleDrop}
-            >
-              <Icon name="cloud-upload" className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Drop your Excel file here, or click to browse
-              </p>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                Supports .xlsx and .xls files (max 10MB)
-              </p>
-              
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".xlsx,.xls"
-                onChange={handleFileSelect}
-                className="hidden"
-              />
-              
-              <Button
-                onClick={() => fileInputRef.current?.click()}
-                variant="outline"
-                className="mb-4"
-              >
-                Select File
-              </Button>
-              
-              {file && (
-                <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-md">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Icon name="document" className="w-5 h-5 text-green-500" />
-                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                        {file.name}
-                      </span>
-                      <span className="text-xs text-gray-500">
-                        ({(file.size / 1024 / 1024).toFixed(2)} MB)
-                      </span>
-                    </div>
-                    <button
-                      onClick={() => setFile(null)}
-                      className="text-red-500 hover:text-red-700"
-                    >
-                      <Icon name="x" className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
+            {/* File Upload Area */}
+            <FileInput
+              accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+              placeholder="Drop your Excel file here, or click to browse"
+              maxSize={10}
+              onChange={(files) => {
+                const selectedFile = files?.[0];
+                if (selectedFile) {
+                  // Validate file type
+                  if (selectedFile.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || 
+                      selectedFile.type === 'application/vnd.ms-excel' ||
+                      selectedFile.name.endsWith('.xlsx') || 
+                      selectedFile.name.endsWith('.xls')) {
+                    setFile(selectedFile);
+                  } else {
+                    alert('Please select an Excel file (.xlsx or .xls)');
+                  }
+                }
+              }}
+            />
 
             <div className="mt-6 flex gap-3">
               <Button

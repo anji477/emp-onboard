@@ -10,7 +10,15 @@ export const sanitizeError = (error) => {
     /hash/gi
   ];
   
-  let message = error.message || 'Internal server error';
+  // Handle different error types
+  let message;
+  if (typeof error === 'string') {
+    message = error;
+  } else if (error && typeof error === 'object') {
+    message = error.message || error.toString() || 'Internal server error';
+  } else {
+    message = String(error) || 'Internal server error';
+  }
   
   // Remove sensitive information
   sensitivePatterns.forEach(pattern => {
@@ -25,7 +33,7 @@ export const sanitizeError = (error) => {
   
   return {
     message,
-    code: error.code || 'UNKNOWN_ERROR',
+    code: (error && error.code) || 'UNKNOWN_ERROR',
     timestamp: new Date().toISOString()
   };
 };
@@ -58,6 +66,13 @@ export const asyncHandler = (fn) => {
 };
 
 export const globalErrorHandler = (err, req, res, next) => {
+  console.error('Global error handler caught:', {
+    message: err.message,
+    stack: err.stack,
+    type: typeof err,
+    isJSONError: err.message && err.message.includes('not valid JSON')
+  });
+  
   logError(err, `${req.method} ${req.path}`);
   
   if (res.headersSent) {

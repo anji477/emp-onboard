@@ -104,9 +104,16 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ user }) => {
   const initializeConversation = async () => {
     try {
       console.log('Initializing conversation for channel:', channelType);
+      // Get CSRF token
+      const csrfResponse = await fetch('/api/csrf-token', { credentials: 'include' });
+      const csrfData = await csrfResponse.json();
+      
       const response = await fetch('/api/chat/conversation', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfData.csrfToken
+        },
         credentials: 'include',
         body: JSON.stringify({ channelType })
       });
@@ -175,9 +182,16 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ user }) => {
     if (!currentConversationId) {
       console.log('No conversation ID, initializing...');
       try {
+        // Get CSRF token
+        const csrfResponse = await fetch('/api/csrf-token', { credentials: 'include' });
+        const csrfData = await csrfResponse.json();
+        
         const response = await fetch('/api/chat/conversation', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfData.csrfToken
+          },
           credentials: 'include',
           body: JSON.stringify({ channelType })
         });
@@ -212,9 +226,16 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ user }) => {
     setMessages(prev => [...prev, userMessage]);
 
     try {
+      // Get CSRF token
+      const csrfResponse = await fetch('/api/csrf-token', { credentials: 'include' });
+      const csrfData = await csrfResponse.json();
+      
       const response = await fetch(`/api/chat/conversation/${currentConversationId}/message`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfData.csrfToken
+        },
         credentials: 'include',
         body: JSON.stringify({ message: text })
       });

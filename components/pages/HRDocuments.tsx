@@ -11,6 +11,7 @@ const HRDocuments: React.FC = () => {
     const [documents, setDocuments] = useState<UserDocument[]>([]);
     const [users, setUsers] = useState<any[]>([]);
     const [templates, setTemplates] = useState<DocumentTemplate[]>([]);
+    const [categories, setCategories] = useState<any[]>([]);
     const [stats, setStats] = useState<DocumentStats>({ total: 0, pending: 0, uploaded: 0, verified: 0, rejected: 0, overdue: 0 });
     const [loading, setLoading] = useState(true);
     const [selectedDocs, setSelectedDocs] = useState<string[]>([]);
@@ -41,6 +42,7 @@ const HRDocuments: React.FC = () => {
             fetchDocuments();
             fetchUsers();
             fetchTemplates();
+            fetchCategories();
             fetchStats();
         }
     }, [auth?.user?.role]);
@@ -80,6 +82,18 @@ const HRDocuments: React.FC = () => {
             }
         } catch (error) {
             console.error('Error fetching templates:', error);
+        }
+    };
+
+    const fetchCategories = async () => {
+        try {
+            const response = await fetch('/api/documents/categories');
+            if (response.ok) {
+                const data = await response.json();
+                setCategories(data);
+            }
+        } catch (error) {
+            console.error('Error fetching categories:', error);
         }
     };
 
@@ -583,6 +597,19 @@ const HRDocuments: React.FC = () => {
                                 className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                                 rows={3}
                             />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Category</label>
+                            <select
+                                value={newTemplate.category || ''}
+                                onChange={(e) => setNewTemplate({...newTemplate, category: e.target.value})}
+                                className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                            >
+                                <option value="">Select category...</option>
+                                {categories.map(category => (
+                                    <option key={category.id} value={category.name}>{category.name}</option>
+                                ))}
+                            </select>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div>

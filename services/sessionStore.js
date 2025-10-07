@@ -49,7 +49,7 @@ class SessionStore {
     return {
       id: session.id,
       userId: session.user_id,
-      data: JSON.parse(session.data),
+      data: typeof session.data === 'string' ? JSON.parse(session.data) : session.data,
       expiresAt: session.expires_at
     };
   }

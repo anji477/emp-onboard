@@ -54,11 +54,7 @@ export const getSettings = async (req, res) => {
  * Update multiple settings atomically
  */
 export const updateSettings = async (req, res) => {
-  const connection = await db.getConnection();
-  
   try {
-    await connection.beginTransaction();
-    
     const { settings } = req.body;
     const userId = req.user.id;
     
@@ -68,13 +64,11 @@ export const updateSettings = async (req, res) => {
 
     // Update or insert each setting
     for (const [key, value] of Object.entries(settings)) {
-      await connection.execute(
+      await db.execute(
         'INSERT INTO organization_settings (setting_key, setting_value, category, updated_by) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), updated_by = VALUES(updated_by)',
         [key, safeJsonStringify(value), 'system', userId]
       );
     }
-
-    await connection.commit();
     
     // Invalidate cache
     settingsCache.clear();
@@ -83,9 +77,6 @@ export const updateSettings = async (req, res) => {
     res.json({ message: 'Settings updated successfully' });
     
   } catch (error) {
-    await connection.rollback();
     return handleDatabaseError(error, res, 'settings update');
-  } finally {
-    connection.release();
   }
 };

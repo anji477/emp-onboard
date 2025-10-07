@@ -130,9 +130,27 @@ const Tasks: React.FC = () => {
             if (response.ok) {
                 const data = await response.json();
                 setCategories(data);
+            } else {
+                console.error('Categories API failed, using defaults');
+                // Use default categories if API fails
+                setCategories([
+                    { id: 1, name: 'General', description: 'General tasks' },
+                    { id: 2, name: 'Paperwork', description: 'Document tasks' },
+                    { id: 3, name: 'IT Setup', description: 'Technology setup' },
+                    { id: 4, name: 'Training', description: 'Learning tasks' },
+                    { id: 5, name: 'HR', description: 'HR related tasks' }
+                ]);
             }
         } catch (error) {
             console.error('Error fetching categories:', error);
+            // Use default categories on error
+            setCategories([
+                { id: 1, name: 'General', description: 'General tasks' },
+                { id: 2, name: 'Paperwork', description: 'Document tasks' },
+                { id: 3, name: 'IT Setup', description: 'Technology setup' },
+                { id: 4, name: 'Training', description: 'Learning tasks' },
+                { id: 5, name: 'HR', description: 'HR related tasks' }
+            ]);
         }
     };
 

@@ -5,6 +5,7 @@ import Card from '../common/Card';
 import Icon from '../common/Icon';
 import Button from '../common/Button';
 import Modal from '../common/Modal';
+import FileInput from '../common/FileInput';
 import { UserContext } from '../../App';
 
 const Policies: React.FC = () => {
@@ -49,35 +50,30 @@ const Policies: React.FC = () => {
 
     const fetchPolicies = async () => {
         try {
-            let policiesData = [];
+            console.log('Starting fetchPolicies, isAdminOrHR:', isAdminOrHR);
             
-            if (isAdminOrHR) {
-                // Admin/HR see all policies
-                const response = await fetch('/api/policies', { credentials: 'include' });
-                policiesData = await response.json();
-            } else {
-                // Employees see only assigned policies
-                const assignmentsResponse = await fetch(`/api/assignments/${auth?.user?.id}`, { credentials: 'include' });
-                if (assignmentsResponse.ok) {
-                    const assignments = await assignmentsResponse.json();
-                    const policyAssignments = assignments.filter((a: any) => a.item_type === 'policy');
-                    
-                    if (policyAssignments.length > 0) {
-                        const allPoliciesResponse = await fetch('/api/policies', { credentials: 'include' });
-                        const allPolicies = await allPoliciesResponse.json();
-                        policiesData = allPolicies.filter((p: any) => 
-                            policyAssignments.some((a: any) => a.item_id === p.id)
-                        );
-                    }
+            const response = await fetch('/api/policies', { credentials: 'include' });
+            console.log('API response status:', response.status);
+            
+            if (response.ok) {
+                const data = await response.json();
+                console.log('Raw API data:', data);
+                console.log('Data type:', typeof data, 'Is array:', Array.isArray(data));
+                
+                const policiesData = Array.isArray(data) ? data : [];
+                console.log('Setting policies:', policiesData.length, 'items');
+                
+                setPolicies(policiesData);
+                if (policiesData.length > 0 && !selectedPolicy) {
+                    setSelectedPolicy(policiesData[0]);
                 }
-            }
-            
-            setPolicies(policiesData);
-            if (policiesData.length > 0 && !selectedPolicy) {
-                setSelectedPolicy(policiesData[0]);
+            } else {
+                console.error('API error:', response.status, response.statusText);
+                setPolicies([]);
             }
         } catch (error) {
-            console.error('Error fetching policies:', error);
+            console.error('Fetch error:', error);
+            setPolicies([]);
         }
     };
 
@@ -208,6 +204,10 @@ const Policies: React.FC = () => {
         p.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
         p.category.toLowerCase().includes(searchTerm.toLowerCase())
     );
+
+    if (!auth?.user) {
+        return <div className="flex items-center justify-center h-64"><div className="text-gray-500">Loading...</div></div>;
+    }
 
     return (
         <div className="space-y-4">
@@ -494,54 +494,29 @@ const Policies: React.FC = () => {
                         
                         {uploadType === 'file' ? (
                             <div>
-                                <label className="block text-xs font-medium text-gray-700">Policy File</label>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Policy File</label>
+                                <FileInput
+                                    accept=".pdf,.doc,.docx,.ppt,.pptx"
+                                    placeholder="Upload policy document"
+                                    maxSize={10}
+                                    onChange={(files) => {
+                                        const file = files?.[0];
+                                        setSelectedFile(file || null);
+                                        if (file && fileInputRef.current) {
+                                            // Create a new FileList-like object
+                                            const dt = new DataTransfer();
+                                            dt.items.add(file);
+                                            fileInputRef.current.files = dt.files;
+                                        }
+                                    }}
+                                />
                                 <input
                                     ref={fileInputRef}
                                     type="file"
                                     accept=".pdf,.doc,.docx,.ppt,.pptx"
-                                    onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                                    className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                                    className="hidden"
                                 />
-                                <p className="text-xs text-gray-500 mt-1">Supported formats: PDF, DOC, DOCX, PPT, PPTX (Max 10MB)</p>
-                                {selectedFile && (
-                                    <div className="mt-3 p-3 bg-gray-50 rounded-md">
-                                        <p className="text-xs text-green-600 mb-2">Selected: {selectedFile.name}</p>
-                                        <p className="text-xs text-gray-500">Size: {(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
-                                        {selectedFile.type === 'application/pdf' && (
-                                            <div className="mt-2">
-                                                <p className="text-xs text-blue-600 mb-1">PDF Preview:</p>
-                                                <div className="border rounded h-32 bg-white flex items-center justify-center">
-                                                    <div className="text-center">
-                                                        <Icon name="document" className="w-8 h-8 mx-auto text-red-500 mb-1" />
-                                                        <p className="text-xs text-gray-600">PDF Ready for Upload</p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )}
-                                        {(selectedFile.type === 'application/msword' || selectedFile.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') && (
-                                            <div className="mt-2">
-                                                <p className="text-xs text-blue-600 mb-1">Document Preview:</p>
-                                                <div className="border rounded h-32 bg-white flex items-center justify-center">
-                                                    <div className="text-center">
-                                                        <Icon name="document" className="w-8 h-8 mx-auto text-blue-500 mb-1" />
-                                                        <p className="text-xs text-gray-600">Word Document Ready</p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )}
-                                                {(selectedFile.type === 'application/vnd.ms-powerpoint' || selectedFile.type === 'application/vnd.openxmlformats-officedocument.presentationml.presentation' || selectedFile.name.toLowerCase().endsWith('.ppt') || selectedFile.name.toLowerCase().endsWith('.pptx')) && (
-                                            <div className="mt-2">
-                                                <p className="text-xs text-blue-600 mb-1">Presentation Preview:</p>
-                                                <div className="border rounded h-32 bg-white flex items-center justify-center">
-                                                    <div className="text-center">
-                                                        <Icon name="presentation-chart-bar" className="w-8 h-8 mx-auto text-orange-500 mb-1" />
-                                                        <p className="text-xs text-gray-600">PowerPoint Ready</p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Supported formats: PDF, DOC, DOCX, PPT, PPTX (Max 10MB)</p>
                             </div>
                         ) : (
                             <div>

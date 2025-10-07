@@ -42,6 +42,9 @@ const AssignmentManager: React.FC = () => {
     assignedUsers: [] as number[]
   });
   const [successMessage, setSuccessMessage] = useState('');
+  const [employeeFilter, setEmployeeFilter] = useState('');
+  const [teamFilter, setTeamFilter] = useState('');
+  const [roleFilter, setRoleFilter] = useState('');
 
   useEffect(() => {
     fetchUsers();
@@ -214,29 +217,66 @@ const AssignmentManager: React.FC = () => {
 
       <div className="max-w-2xl">
         <Card>
-          <h2 className="text-lg font-semibold mb-4">Employees</h2>
+          <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">Employees</h2>
+          
+          {/* Filters */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+            <input
+              type="text"
+              placeholder="Search by name..."
+              value={employeeFilter}
+              onChange={(e) => setEmployeeFilter(e.target.value)}
+              className="px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md text-sm"
+            />
+            <select
+              value={teamFilter}
+              onChange={(e) => setTeamFilter(e.target.value)}
+              className="px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md text-sm"
+            >
+              <option value="">All Teams</option>
+              {[...new Set(users.map(u => u.team).filter(Boolean))].map(team => (
+                <option key={team} value={team}>{team}</option>
+              ))}
+            </select>
+            <select
+              value={roleFilter}
+              onChange={(e) => setRoleFilter(e.target.value)}
+              className="px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md text-sm"
+            >
+              <option value="">All Roles</option>
+              {[...new Set(users.map(u => u.role))].map(role => (
+                <option key={role} value={role}>{role}</option>
+              ))}
+            </select>
+          </div>
+          
           <div className="space-y-2 max-h-96 overflow-y-auto">
-            {users.map(user => (
-              <div
-                key={user.id}
-                className={`p-3 rounded-lg cursor-pointer transition-colors ${
-                  selectedUser?.id === user.id
-                    ? 'bg-indigo-100 dark:bg-indigo-900 border-indigo-300'
-                    : 'hover:bg-gray-100 dark:hover:bg-gray-700'
-                }`}
-                onClick={() => {
-                  setSelectedUser(user);
-                  fetchExistingAssignments(user.id);
-                }}
-              >
-                <p className="text-sm font-medium">{user.name}</p>
-                <p className="text-sm text-gray-500">{user.team} - {user.role}</p>
-              </div>
-            ))}
+            {users
+              .filter(user => 
+                user.name.toLowerCase().includes(employeeFilter.toLowerCase()) &&
+                (teamFilter === '' || user.team === teamFilter) &&
+                (roleFilter === '' || user.role === roleFilter)
+              )
+              .map(user => (
+                <div
+                  key={user.id}
+                  className={`p-3 rounded-lg cursor-pointer transition-colors ${
+                    selectedUser?.id === user.id
+                      ? 'bg-indigo-100 dark:bg-indigo-900 border-indigo-300'
+                      : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}
+                  onClick={() => {
+                    setSelectedUser(user);
+                    fetchExistingAssignments(user.id);
+                  }}
+                >
+                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{user.name}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{user.team} - {user.role}</p>
+                </div>
+              ))
+            }
           </div>
         </Card>
-
-
       </div>
 
       {/* Assignment Modal */}
@@ -244,18 +284,18 @@ const AssignmentManager: React.FC = () => {
         <Modal isOpen={true} onClose={() => setShowAssignModal(false)} title={`Assign Items to ${selectedUser?.name}`}>
           <div className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Due Date</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Due Date</label>
               <input
                 type="date"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md"
               />
             </div>
 
             <div className="space-y-4">
               <div>
-                <h3 className="font-medium text-gray-700 mb-2">Tasks</h3>
+                <h3 className="font-medium text-gray-700 dark:text-gray-300 mb-2">Tasks</h3>
                 <div className="max-h-32 overflow-y-auto space-y-1">
                   {availableItems.tasks.map(task => (
                     <label key={task.id} className="flex items-center">
@@ -265,14 +305,14 @@ const AssignmentManager: React.FC = () => {
                         onChange={() => toggleItemSelection(task)}
                         className="mr-2"
                       />
-                      <span className="text-sm">{task.title} ({task.category})</span>
+                      <span className="text-sm text-gray-900 dark:text-gray-100">{task.title} ({task.category})</span>
                     </label>
                   ))}
                 </div>
               </div>
 
               <div>
-                <h3 className="font-medium text-gray-700 mb-2">Policies</h3>
+                <h3 className="font-medium text-gray-700 dark:text-gray-300 mb-2">Policies</h3>
                 <div className="max-h-32 overflow-y-auto space-y-1">
                   {availableItems.policies.map(policy => (
                     <label key={policy.id} className="flex items-center">
@@ -282,14 +322,14 @@ const AssignmentManager: React.FC = () => {
                         onChange={() => toggleItemSelection(policy)}
                         className="mr-2"
                       />
-                      <span className="text-sm">{policy.title} ({policy.category})</span>
+                      <span className="text-sm text-gray-900 dark:text-gray-100">{policy.title} ({policy.category})</span>
                     </label>
                   ))}
                 </div>
               </div>
 
               <div>
-                <h3 className="font-medium text-gray-700 mb-2">Training</h3>
+                <h3 className="font-medium text-gray-700 dark:text-gray-300 mb-2">Training</h3>
                 <div className="max-h-32 overflow-y-auto space-y-1">
                   {availableItems.training.map(training => (
                     <label key={training.id} className="flex items-center">
@@ -299,7 +339,7 @@ const AssignmentManager: React.FC = () => {
                         onChange={() => toggleItemSelection(training)}
                         className="mr-2"
                       />
-                      <span className="text-sm">{training.title} ({training.category})</span>
+                      <span className="text-sm text-gray-900 dark:text-gray-100">{training.title} ({training.category})</span>
                     </label>
                   ))}
                 </div>
@@ -323,22 +363,22 @@ const AssignmentManager: React.FC = () => {
         <Modal isOpen={true} onClose={() => setShowCreateTaskModal(false)} title="Create New Task">
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Task Title</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Task Title</label>
               <input
                 type="text"
                 value={newTask.title}
                 onChange={(e) => setNewTask({...newTask, title: e.target.value})}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md"
                 placeholder="Enter task title"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Category</label>
               <select
                 value={newTask.category}
                 onChange={(e) => setNewTask({...newTask, category: e.target.value})}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md"
               >
                 <option value="">Select Category</option>
                 <option value="General">General</option>
@@ -351,29 +391,29 @@ const AssignmentManager: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Description (Optional)</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Description (Optional)</label>
               <textarea
                 value={newTask.description}
                 onChange={(e) => setNewTask({...newTask, description: e.target.value})}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md"
                 rows={3}
                 placeholder="Task description or instructions"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Due Date</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Due Date</label>
               <input
                 type="date"
                 value={newTask.dueDate}
                 onChange={(e) => setNewTask({...newTask, dueDate: e.target.value})}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Assign to Employees</label>
-              <div className="max-h-40 overflow-y-auto border border-gray-300 rounded-md p-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Assign to Employees</label>
+              <div className="max-h-40 overflow-y-auto border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-md p-2">
                 {users.map(user => (
                   <label key={user.id} className="flex items-center py-1">
                     <input
@@ -382,7 +422,7 @@ const AssignmentManager: React.FC = () => {
                       onChange={() => toggleUserSelection(user.id)}
                       className="mr-2"
                     />
-                    <span className="text-sm">{user.name} ({user.team})</span>
+                    <span className="text-sm text-gray-900 dark:text-gray-100">{user.name} ({user.team})</span>
                   </label>
                 ))}
               </div>

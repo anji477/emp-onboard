@@ -5,6 +5,7 @@ import Button from '../common/Button';
 import Icon from '../common/Icon';
 import Modal from '../common/Modal';
 import BulkEmployeeUpload from './BulkEmployeeUpload';
+import { fetchWithCsrf } from '../../utils/csrf';
 
 interface User {
   id: number;
@@ -85,9 +86,8 @@ const UserManagement: React.FC = () => {
     
     console.log('handleAddUser called with:', formData);
     try {
-      const response = await fetch('/api/users', {
+      const response = await fetchWithCsrf('/api/users', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
       });
       
@@ -118,9 +118,8 @@ const UserManagement: React.FC = () => {
     }
     
     try {
-      const response = await fetch('/api/users/invite', {
+      const response = await fetchWithCsrf('/api/users/invite', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
       });
       
@@ -145,9 +144,8 @@ const UserManagement: React.FC = () => {
     if (!editingUser) return;
     
     try {
-      const response = await fetch(`/api/users/${editingUser.id}`, {
+      const response = await fetchWithCsrf(`/api/users/${editingUser.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
       });
       
@@ -168,7 +166,7 @@ const UserManagement: React.FC = () => {
     if (!deleteUser) return;
     
     try {
-      const response = await fetch(`/api/users/${deleteUser.id}`, {
+      const response = await fetchWithCsrf(`/api/users/${deleteUser.id}`, {
         method: 'DELETE'
       });
       
