@@ -6,12 +6,18 @@ export const validateEmail = (email) => {
 };
 
 export const validatePassword = (password) => {
+  const minLength = parseInt(process.env.PASSWORD_MIN_LENGTH) || 8;
+  const maxLength = parseInt(process.env.PASSWORD_MAX_LENGTH) || 128;
+  const requireUpper = process.env.PASSWORD_REQUIRE_UPPER !== 'false';
+  const requireLower = process.env.PASSWORD_REQUIRE_LOWER !== 'false';
+  const requireNumber = process.env.PASSWORD_REQUIRE_NUMBER !== 'false';
+  
   return typeof password === 'string' && 
-         password.length >= 8 && 
-         password.length <= 128 &&
-         /[A-Z]/.test(password) &&
-         /[a-z]/.test(password) &&
-         /[0-9]/.test(password);
+         password.length >= minLength && 
+         password.length <= maxLength &&
+         (!requireUpper || /[A-Z]/.test(password)) &&
+         (!requireLower || /[a-z]/.test(password)) &&
+         (!requireNumber || /[0-9]/.test(password));
 };
 
 export const validateString = (str, minLength = 1, maxLength = 255) => {
@@ -49,7 +55,8 @@ export const validateUserInput = (data) => {
     errors.push('Password must be 8-128 characters with uppercase, lowercase, and number');
   }
   
-  if (data.role && !validateEnum(data.role, ['Employee', 'Admin', 'HR'])) {
+  const allowedRoles = process.env.ALLOWED_ROLES ? process.env.ALLOWED_ROLES.split(',') : ['Employee', 'Admin', 'HR'];
+  if (data.role && !validateEnum(data.role, allowedRoles)) {
     errors.push('Invalid role');
   }
   

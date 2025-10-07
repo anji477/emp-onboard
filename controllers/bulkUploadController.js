@@ -20,7 +20,7 @@ class BulkUploadController {
           Department: 'Engineering',
           JobTitle: 'Software Developer',
           JoiningDate: '2024-01-15',
-          Password: 'temp123'
+          Password: process.env.SAMPLE_PASSWORD || '[CHANGE_ME]'
         },
         {
           EmployeeID: 'EMP002',
@@ -30,7 +30,7 @@ class BulkUploadController {
           Department: 'Human Resources',
           JobTitle: 'HR Manager',
           JoiningDate: '2024-01-20',
-          Password: 'temp456'
+          Password: process.env.SAMPLE_PASSWORD || '[CHANGE_ME]'
         }
       ];
 
@@ -115,7 +115,8 @@ class BulkUploadController {
           }
 
           // Hash password
-          const hashedPassword = await bcrypt.hash(employee.Password || 'temp123', 10);
+          const defaultPassword = process.env.DEFAULT_EMPLOYEE_PASSWORD || 'TempPass123!';
+          const hashedPassword = await bcrypt.hash(employee.Password || defaultPassword, 10);
 
           // Insert employee
           const [result] = await this.db.execute(
@@ -194,7 +195,7 @@ class BulkUploadController {
     }
 
     // Role validation
-    const validRoles = ['Employee', 'Admin', 'HR'];
+    const validRoles = process.env.ALLOWED_ROLES ? process.env.ALLOWED_ROLES.split(',') : ['Employee', 'Admin', 'HR'];
     if (employee.Role && !validRoles.includes(employee.Role)) {
       errors.push('Role must be one of: Employee, Admin, HR');
     }

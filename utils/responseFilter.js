@@ -27,7 +27,7 @@ export const filterSettingsResponse = (settings) => {
   if (filtered.email_settings?.value) {
     const emailSettings = { ...filtered.email_settings.value };
     if (emailSettings.smtp_password) {
-      emailSettings.smtp_password = '[REDACTED]';
+      emailSettings.smtp_password = process.env.REDACTION_MASK || '***';
     }
     filtered.email_settings = { ...filtered.email_settings, value: emailSettings };
   }

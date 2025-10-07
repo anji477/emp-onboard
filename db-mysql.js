@@ -4,16 +4,24 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const pool = mysql.createPool({
+// Database configuration with validation
+const dbConfig = {
   host: process.env.DB_HOST || 'localhost',
   user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
+  password: process.env.DB_PASSWORD,
   database: process.env.DB_DATABASE || 'onboarding_db',
-  timezone: '+00:00',
+  timezone: process.env.DB_TIMEZONE || '+00:00',
   waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0
-});
+  connectionLimit: parseInt(process.env.DB_CONNECTION_LIMIT) || 10,
+  queueLimit: parseInt(process.env.DB_QUEUE_LIMIT) || 0
+};
+
+// Validate required configuration
+if (!dbConfig.password) {
+  throw new Error('DB_PASSWORD environment variable is required');
+}
+
+const pool = mysql.createPool(dbConfig);
 
 console.log('✅ MySQL pool created successfully');
 
@@ -25,9 +33,12 @@ pool.on('connection', () => {
 });
 
 pool.on('error', (err) => {
-  if (err.code !== 'PROTOCOL_CONNECTION_LOST') {
-    console.error('❌ Database error:', err.message);
-  }
+  console.error('❌ Database error:', {
+    code: err.code,
+    message: err.message,
+    host: dbConfig.host,
+    database: dbConfig.database
+  });
 });
 
 export default pool;

@@ -688,7 +688,8 @@ app.post('/api/users/invite', verifyToken, requireRole(['Admin', 'HR']), asyncHa
     const avatar_url = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=6366f1&color=fff`;
     
     // Hash temporary password
-    const tempHashedPassword = await bcrypt.hash('TEMP_PASSWORD', 12);
+    const tempPassword = process.env.TEMP_PASSWORD || 'TempPass123!';
+    const tempHashedPassword = await bcrypt.hash(tempPassword, 12);
     
     const [result] = await db.execute(
       'INSERT INTO users (name, email, password_hash, role, avatar_url, team, job_title, start_date, onboarding_progress, invitation_token, invitation_expires) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
@@ -953,16 +954,9 @@ app.post('/api/auth/change-password', verifyToken, asyncHandler(async (req, res)
     }
     
     // Check for compromised passwords
-    const compromisedPasswords = [
-      'password', 'password123', 'password1', 'password12', 'password1234',
-      'admin', 'admin123', 'admin1', 'administrator', 'root', 'root123',
-      '123456', '1234567', '12345678', '123456789', '1234567890',
-      'qwerty', 'qwerty123', 'qwertyuiop', 'asdfgh', 'zxcvbn',
-      'welcome', 'welcome123', 'letmein', 'monkey', 'dragon',
-      'abc123', 'abcdef', 'abcd1234', 'test', 'test123',
-      'user', 'user123', 'guest', 'guest123', 'demo', 'demo123',
-      'login', 'login123', 'pass', 'pass123', 'secret', 'secret123'
-    ];
+    const defaultCompromised = 'password,password123,admin,admin123,123456,qwerty,welcome,test,user,guest';
+    const compromisedList = process.env.COMPROMISED_PASSWORDS || defaultCompromised;
+    const compromisedPasswords = compromisedList.split(',').map(p => p.trim());
     
     const lowerPassword = newPassword.toLowerCase();
     if (compromisedPasswords.some(weak => lowerPassword === weak || lowerPassword.includes(weak))) {

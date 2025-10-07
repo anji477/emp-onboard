@@ -6,7 +6,8 @@ export const generateSecureToken = (length = 32) => {
 };
 
 export const generateSecurePassword = (length = 16) => {
-  const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+  const defaultCharset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+  const charset = process.env.PASSWORD_CHARSET || defaultCharset;
   let password = '';
   
   for (let i = 0; i < length; i++) {
@@ -17,14 +18,15 @@ export const generateSecurePassword = (length = 16) => {
   return password;
 };
 
-export const generateInvitationToken = () => {
-  return crypto.randomBytes(32).toString('base64url');
+// Generate secure tokens for various purposes
+export const generateToken = (length = 32, encoding = 'base64url') => {
+  return crypto.randomBytes(length).toString(encoding);
 };
 
-export const generateResetToken = () => {
-  return crypto.randomBytes(32).toString('base64url');
-};
+export const generateInvitationToken = () => generateToken();
+export const generateResetToken = () => generateToken();
 
-export const hashSensitiveData = (data) => {
-  return crypto.createHash('sha256').update(data).digest('hex');
+export const hashSensitiveData = (data, algorithm = 'sha256') => {
+  if (!data) throw new Error('Data is required for hashing');
+  return crypto.createHash(algorithm).update(String(data)).digest('hex');
 };

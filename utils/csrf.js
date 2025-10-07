@@ -4,7 +4,8 @@ let csrfToken = null;
 export const getCsrfToken = async () => {
   if (!csrfToken) {
     try {
-      const response = await fetch('/api/csrf-token', {
+      const csrfEndpoint = process.env.CSRF_TOKEN_ENDPOINT || '/api/csrf-token';
+      const response = await fetch(csrfEndpoint, {
         credentials: 'include'
       });
       const data = await response.json();
@@ -29,7 +30,8 @@ export const fetchWithCsrf = async (url, options = {}) => {
   };
   
   if (token && options.method && options.method !== 'GET') {
-    headers['X-CSRF-Token'] = token;
+    const csrfHeader = process.env.CSRF_HEADER_NAME || 'X-CSRF-Token';
+    headers[csrfHeader] = token;
   }
   
   const response = await fetch(url, {
@@ -39,7 +41,8 @@ export const fetchWithCsrf = async (url, options = {}) => {
   });
   
   // If CSRF token is invalid, clear it and retry once
-  if (response.status === 403 && !options._retry) {
+  const csrfFailureStatus = parseInt(process.env.CSRF_FAILURE_STATUS) || 403;
+  if (response.status === csrfFailureStatus && !options._retry) {
     clearCsrfToken();
     return fetchWithCsrf(url, { ...options, _retry: true });
   }
