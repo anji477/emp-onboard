@@ -48,9 +48,17 @@ const Team: React.FC = () => {
         
         try {
             setUpdating(true);
+            
+            // Get CSRF token
+            const csrfResponse = await fetch('/api/csrf-token');
+            const { csrfToken } = await csrfResponse.json();
+            
             const response = await fetch(`/api/users/${editingUser.id}/roles`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken
+                },
                 credentials: 'include',
                 body: JSON.stringify({ roles: selectedRoles })
             });
@@ -95,9 +103,17 @@ const Team: React.FC = () => {
         
         try {
             setAdding(true);
+            
+            // Get CSRF token
+            const csrfResponse = await fetch('/api/csrf-token');
+            const { csrfToken } = await csrfResponse.json();
+            
             const response = await fetch('/api/users', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken
+                },
                 credentials: 'include',
                 body: JSON.stringify({
                     ...newUser,
@@ -110,7 +126,10 @@ const Team: React.FC = () => {
                 // Add multiple roles
                 await fetch(`/api/users/${user.id}/roles`, {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': csrfToken
+                    },
                     credentials: 'include',
                     body: JSON.stringify({ roles: newUser.roles })
                 });

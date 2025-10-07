@@ -84,13 +84,20 @@ const Profile: React.FC = () => {
         if (!auth?.user) return;
         
         try {
+            // Get CSRF token
+            const csrfResponse = await fetch('/api/csrf-token');
+            const { csrfToken } = await csrfResponse.json();
+            
             // Use user ID 2 for employee (matching database)
             const userId = auth.user.role === 'Admin' ? 1 : 2;
             console.log('Updating profile for user ID:', userId);
             
             const response = await fetch(`/api/users/${userId}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken
+                },
                 body: JSON.stringify({ name, email, avatar_url: avatarUrl })
             });
             
@@ -156,9 +163,16 @@ const Profile: React.FC = () => {
         }
 
         try {
+            // Get CSRF token
+            const csrfResponse = await fetch('/api/csrf-token');
+            const { csrfToken } = await csrfResponse.json();
+            
             const response = await fetch('/api/auth/change-password', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken
+                },
                 credentials: 'include',
                 body: JSON.stringify({ currentPassword, newPassword })
             });

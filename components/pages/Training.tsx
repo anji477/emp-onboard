@@ -204,8 +204,15 @@ const Training: React.FC = () => {
         if (!confirm('Are you sure you want to delete this training module?')) return;
 
         try {
+            // Get CSRF token
+            const csrfResponse = await fetch('/api/csrf-token');
+            const { csrfToken } = await csrfResponse.json();
+            
             const response = await fetch(`/api/training/${moduleId}`, {
-                method: 'DELETE'
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-Token': csrfToken
+                }
             });
 
             if (response.ok) {
@@ -234,10 +241,16 @@ const Training: React.FC = () => {
     const handleCompleteModule = async (moduleId: string) => {
         try {
             const userId = auth?.user?.id || '6';
+            
+            // Get CSRF token
+            const csrfResponse = await fetch('/api/csrf-token');
+            const { csrfToken } = await csrfResponse.json();
+            
             const response = await fetch(`/api/training/${moduleId}/complete`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken
                 },
                 body: JSON.stringify({ userId })
             });

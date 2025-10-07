@@ -33,32 +33,32 @@ class NotificationService {
     if (reason && status === 'Rejected') {
       message += ` - ${reason}`;
     }
-    await this.createNotification(userId, message, 'document', null, 'document');
+    await this.createNotification(userId, message, 'info', null, 'doc');
   }
 
   async notifyTrainingAssignment(userId, trainingTitle) {
     const message = `New training module assigned: "${trainingTitle}"`;
-    await this.createNotification(userId, message, 'training', null, 'training');
+    await this.createNotification(userId, message, 'info', null, 'task');
   }
 
   async notifyDeadlineReminder(userId, itemName, daysLeft, type) {
     const message = `Reminder: "${itemName}" is due in ${daysLeft} day${daysLeft > 1 ? 's' : ''}`;
-    await this.createNotification(userId, message, 'reminder', null, type);
+    await this.createNotification(userId, message, 'info', null, 'task');
   }
 
   async notifyOverdue(userId, itemName, type) {
     const message = `Overdue: "${itemName}" requires immediate attention`;
-    await this.createNotification(userId, message, 'urgent', null, type);
+    await this.createNotification(userId, message, 'error', null, 'task');
   }
 
   async notifyWelcome(userId, userName) {
     const message = `Welcome to the team, ${userName}! Complete your onboarding to get started.`;
-    await this.createNotification(userId, message, 'welcome', null, 'onboarding');
+    await this.createNotification(userId, message, 'info', null, 'task');
   }
 
   async notifyProgressMilestone(userId, progress) {
     const message = `Great progress! You've completed ${progress}% of your onboarding.`;
-    await this.createNotification(userId, message, 'success', null, 'progress');
+    await this.createNotification(userId, message, 'info', null, 'task');
   }
 
   async notifyNewChatMessage(userId, senderName, conversationId) {
@@ -67,7 +67,7 @@ class NotificationService {
   }
 
   async notifyHRMessage(userId, message, conversationId) {
-    await this.createNotification(userId, `HR: ${message}`, 'chat', conversationId, 'hr_chat');
+    await this.createNotification(userId, `HR: ${message}`, 'chat', conversationId, 'chat');
   }
 }
 

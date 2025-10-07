@@ -245,6 +245,10 @@ const Tasks: React.FC = () => {
         try {
             let response;
             
+            // Get CSRF token
+            const csrfResponse = await fetch('/api/csrf-token');
+            const { csrfToken } = await csrfResponse.json();
+            
             if (id.startsWith('assigned-')) {
                 // Handle assigned task - update user_assignments table
                 const assignmentId = id.replace('assigned-', '');
@@ -253,7 +257,10 @@ const Tasks: React.FC = () => {
                 
                 response = await fetch(`/api/assignments/${userId}/task/${assignmentId}`, {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': csrfToken
+                    },
                     credentials: 'include',
                     body: JSON.stringify({ status: assignmentStatus })
                 });
@@ -261,7 +268,10 @@ const Tasks: React.FC = () => {
                 // Handle direct task - update tasks table
                 response = await fetch(`/api/tasks/${id}`, {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': csrfToken
+                    },
                     credentials: 'include',
                     body: JSON.stringify({ status: newStatus })
                 });
@@ -470,9 +480,17 @@ const Tasks: React.FC = () => {
                                     }
                                     try {
                                         setCreating(true);
+                                        
+                                        // Get CSRF token
+                                        const csrfResponse = await fetch('/api/csrf-token');
+                                        const { csrfToken } = await csrfResponse.json();
+                                        
                                         const response = await fetch('/api/tasks', {
                                             method: 'POST',
-                                            headers: { 'Content-Type': 'application/json' },
+                                            headers: { 
+                                                'Content-Type': 'application/json',
+                                                'X-CSRF-Token': csrfToken
+                                            },
                                             credentials: 'include',
                                             body: JSON.stringify(newTask)
                                         });
@@ -546,9 +564,16 @@ const Tasks: React.FC = () => {
                                             setCategoryError('');
                                             console.log('Creating category:', newCategory);
                                             
+                                            // Get CSRF token
+                                            const csrfResponse = await fetch('/api/csrf-token');
+                                            const { csrfToken } = await csrfResponse.json();
+                                            
                                             const response = await fetch('/api/task-categories', {
                                                 method: 'POST',
-                                                headers: { 'Content-Type': 'application/json' },
+                                                headers: { 
+                                                    'Content-Type': 'application/json',
+                                                    'X-CSRF-Token': csrfToken
+                                                },
                                                 credentials: 'include',
                                                 body: JSON.stringify(newCategory)
                                             });
@@ -605,8 +630,15 @@ const Tasks: React.FC = () => {
                                             onClick={async () => {
                                                 if (confirm(`Delete category "${category.name}"?`)) {
                                                     try {
+                                                        // Get CSRF token
+                                                        const csrfResponse = await fetch('/api/csrf-token');
+                                                        const { csrfToken } = await csrfResponse.json();
+                                                        
                                                         const response = await fetch(`/api/task-categories/${category.id}`, {
                                                             method: 'DELETE',
+                                                            headers: {
+                                                                'X-CSRF-Token': csrfToken
+                                                            },
                                                             credentials: 'include'
                                                         });
                                                         if (response.ok) {
@@ -703,9 +735,16 @@ const Tasks: React.FC = () => {
                                             due_date: editForm.dueDate
                                         });
                                         
+                                        // Get CSRF token
+                                        const csrfResponse = await fetch('/api/csrf-token');
+                                        const { csrfToken } = await csrfResponse.json();
+                                        
                                         const response = await fetch(`/api/tasks/${editingTask.id}`, {
                                             method: 'PUT',
-                                            headers: { 'Content-Type': 'application/json' },
+                                            headers: { 
+                                                'Content-Type': 'application/json',
+                                                'X-CSRF-Token': csrfToken
+                                            },
                                             credentials: 'include',
                                             body: JSON.stringify({
                                                 title: editForm.title,
@@ -761,8 +800,15 @@ const Tasks: React.FC = () => {
                             <Button 
                                 onClick={async () => {
                                     try {
+                                        // Get CSRF token
+                                        const csrfResponse = await fetch('/api/csrf-token');
+                                        const { csrfToken } = await csrfResponse.json();
+                                        
                                         const response = await fetch(`/api/tasks/${showDeleteConfirm}`, {
                                             method: 'DELETE',
+                                            headers: {
+                                                'X-CSRF-Token': csrfToken
+                                            },
                                             credentials: 'include'
                                         });
                                         if (response.ok) {

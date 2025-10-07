@@ -166,8 +166,17 @@ const Documents: React.FC = () => {
             formData.append('documentName', targetDoc.name);
             
             try {
+                // Get CSRF token
+                const csrfResponse = await fetch('/api/csrf-token');
+                const { csrfToken } = await csrfResponse.json();
+                
+                formData.append('csrfToken', csrfToken);
+                
                 const response = await fetch('/api/documents/upload', {
                     method: 'POST',
+                    headers: {
+                        'X-CSRF-Token': csrfToken
+                    },
                     body: formData
                 });
                 
@@ -190,9 +199,17 @@ const Documents: React.FC = () => {
     const handleVerification = async (docId: string) => {
         try {
             setVerifying(docId);
+            
+            // Get CSRF token
+            const csrfResponse = await fetch('/api/csrf-token');
+            const { csrfToken } = await csrfResponse.json();
+            
             const response = await fetch(`/api/documents/${docId}/status`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken
+                },
                 credentials: 'include',
                 body: JSON.stringify({ status: 'Verified' })
             });
@@ -221,9 +238,17 @@ const Documents: React.FC = () => {
 
         try {
             setRejecting(true);
+            
+            // Get CSRF token
+            const csrfResponse = await fetch('/api/csrf-token');
+            const { csrfToken } = await csrfResponse.json();
+            
             const response = await fetch(`/api/documents/${docToReject.id}/status`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken
+                },
                 credentials: 'include',
                 body: JSON.stringify({ 
                     status: 'Rejected', 
@@ -263,9 +288,16 @@ const Documents: React.FC = () => {
         }
         
         try {
+            // Get CSRF token
+            const csrfResponse = await fetch('/api/csrf-token');
+            const { csrfToken } = await csrfResponse.json();
+            
             const response = await fetch('/api/documents/assign', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken
+                },
                 credentials: 'include',
                 body: JSON.stringify({
                     documentName: newDocumentName.trim(),
@@ -351,8 +383,18 @@ const Documents: React.FC = () => {
         
         try {
             setUploadingDocument(true);
+            
+            // Get CSRF token
+            const csrfResponse = await fetch('/api/csrf-token');
+            const { csrfToken } = await csrfResponse.json();
+            
+            formData.append('csrfToken', csrfToken);
+            
             const response = await fetch('/api/documents/upload', {
                 method: 'POST',
+                headers: {
+                    'X-CSRF-Token': csrfToken
+                },
                 credentials: 'include',
                 body: formData
             });
@@ -401,9 +443,16 @@ const Documents: React.FC = () => {
     const handleBulkVerify = async () => {
         if (selectedDocs.length === 0) return;
         try {
+            // Get CSRF token
+            const csrfResponse = await fetch('/api/csrf-token');
+            const { csrfToken } = await csrfResponse.json();
+            
             const response = await fetch('/api/documents/bulk-action', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken
+                },
                 credentials: 'include',
                 body: JSON.stringify({ action: 'verify', documentIds: selectedDocs })
             });
@@ -419,9 +468,16 @@ const Documents: React.FC = () => {
     const handleBulkReject = async () => {
         if (selectedDocs.length === 0 || !rejectionReason.trim()) return;
         try {
+            // Get CSRF token
+            const csrfResponse = await fetch('/api/csrf-token');
+            const { csrfToken } = await csrfResponse.json();
+            
             const response = await fetch('/api/documents/bulk-action', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken
+                },
                 credentials: 'include',
                 body: JSON.stringify({ action: 'reject', documentIds: selectedDocs, rejectionReason })
             });

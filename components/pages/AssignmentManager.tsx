@@ -126,9 +126,16 @@ const AssignmentManager: React.FC = () => {
     if (!selectedUser || selectedItems.length === 0) return;
 
     try {
+      // Get CSRF token
+      const csrfResponse = await fetch('/api/csrf-token', { credentials: 'include' });
+      const csrfData = await csrfResponse.json();
+      
       const response = await fetch('/api/assignments', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfData.csrfToken
+        },
         credentials: 'include',
         body: JSON.stringify({
           userId: selectedUser.id,
@@ -161,9 +168,16 @@ const AssignmentManager: React.FC = () => {
     if (!newTask.title || !newTask.category || newTask.assignedUsers.length === 0) return;
 
     try {
+      // Get CSRF token
+      const csrfResponse = await fetch('/api/csrf-token', { credentials: 'include' });
+      const csrfData = await csrfResponse.json();
+      
       const response = await fetch('/api/tasks', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfData.csrfToken
+        },
         credentials: 'include',
         body: JSON.stringify(newTask)
       });

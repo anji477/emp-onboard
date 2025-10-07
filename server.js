@@ -7,8 +7,6 @@ import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import bcrypt from 'bcrypt';
 import fs from 'fs';
-import speakeasy from 'speakeasy';
-import QRCode from 'qrcode';
 import crypto from 'crypto';
 import db from './db-mysql.js'; // Import our database connection
 import { generateToken, verifyToken, requireRole } from './middleware/auth.js';
@@ -150,7 +148,16 @@ app.get('/api/test', asyncHandler(async (req, res) => {
     const [result] = await db.execute('SELECT 1 as test');
     const [users] = await db.execute('SELECT id, name, email FROM users');
     const [tasks] = await db.execute('SELECT * FROM tasks');
-    const [assignments] = await db.execute('SELECT * FROM user_assignments');
+    
+    let assignments = [];
+    try {
+      const [assignmentResult] = await db.execute('SELECT * FROM user_assignments');
+      assignments = Array.isArray(assignmentResult) ? assignmentResult : [];
+    } catch (assignmentError) {
+      console.log('assignments table not available:', assignmentError.message);
+      assignments = [];
+    }
+    
     res.json({ message: 'Database connected successfully', result, users, tasks, assignments });
   } catch (error) {
     if (error.code === 'ECONNREFUSED') {
@@ -1031,66 +1038,10 @@ app.post('/api/login', asyncHandler(async (req, res) => {
       }
     }
     
-    // Check if MFA is required
-    const [mfaSettings] = await db.execute(
-      'SELECT setting_value FROM organization_settings WHERE setting_key = "mfa_policy"'
-    );
-    
-    let mfaRequired = false;
-    if (mfaSettings.length > 0) {
-      const policy = safeJsonParse(mfaSettings[0].setting_value, { enforced: false });
-      if (policy) {
-        mfaRequired = policy.enforced || (policy.require_for_roles && policy.require_for_roles.includes(user.role));
-      }
-    }
-    
-    // Check if MFA is required for this user
-    if (mfaRequired) {
-      // If user hasn't set up MFA yet, redirect to setup
-      if (!user.mfa_enabled || !user.mfa_setup_completed) {
-        // Generate temporary JWT token for MFA setup
-        const { password_hash, invitation_token, invitation_expires, mfa_secret, mfa_backup_codes, ...userData } = user;
-        const tempToken = generateToken(userData);
-        
-        // Set temporary cookie for MFA setup
-        res.cookie('token', tempToken, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'strict',
-          maxAge: 60 * 60 * 1000, // 1 hour for MFA setup
-          path: '/'
-        });
-        
-        return res.json({
-          requiresMfaSetup: true,
-          userEmail: user.email,
-          userName: user.name,
-          tempToken: tempToken
-        });
-      }
-      
-      // User has MFA set up, check for trusted device
-      const deviceFingerprint = crypto.createHash('sha256')
-        .update(req.headers['user-agent'] + req.ip)
-        .digest('hex');
-      
-      const [trustedDevices] = await db.execute(
-        'SELECT id FROM trusted_devices WHERE user_id = ? AND device_fingerprint = ? AND expires_at > NOW()',
-        [user.id, deviceFingerprint]
-      );
-      
-      if (trustedDevices.length === 0) {
-        return res.json({
-          requiresMfa: true,
-          userEmail: user.email,
-          mfaEnabled: user.mfa_enabled,
-          setupCompleted: user.mfa_setup_completed
-        });
-      }
-    }
+
     
     // Return user data without password
-    const { password_hash, invitation_token, invitation_expires, mfa_secret, mfa_backup_codes, ...userData } = user;
+    const { password_hash, invitation_token, invitation_expires, ...userData } = user;
     
     // Create session
     req.session.userId = user.id;
@@ -1498,9 +1449,7 @@ app.post('/api/test-email', verifyToken, requireRole(['Admin']), async (req, res
   }
 });
 
-// Import MFA routes and enforcement middleware
-import mfaRoutes from './routes/mfa.js';
-import requireMfaSetup from './middleware/mfa-enforcement.js';
+
 
 // Import Chat routes
 import chatRoutes from './routes/chat.js';
@@ -1508,8 +1457,7 @@ import chatRoutes from './routes/chat.js';
 // Import Documents routes
 import documentsRoutes from './server/routes/documents.js';
 
-// Use MFA routes (exclude from enforcement)
-app.use('/api/mfa', mfaRoutes);
+
 
 // Use Chat routes (exclude from MFA enforcement)
 app.use('/api/chat', chatRoutes);
@@ -1517,20 +1465,7 @@ app.use('/api/chat', chatRoutes);
 // Use Documents routes
 app.use('/api/documents', documentsRoutes);
 
-// Apply MFA enforcement to protected routes (but not init endpoints)
-app.use('/api/tasks', verifyToken, requireMfaSetup);
-// Note: /api/users handled individually below
-app.use('/api/assets', verifyToken, requireMfaSetup);
-app.use('/api/documents', verifyToken, requireMfaSetup);
-app.use('/api/training', verifyToken, requireMfaSetup);
-app.use('/api/assignments', verifyToken, requireMfaSetup);
-app.use('/api/settings', verifyToken, requireMfaSetup);
-app.use('/api/admin', verifyToken, requireMfaSetup);
-// Note: /api/search handled individually above
-app.use('/api/notifications', verifyToken, requireMfaSetup);
-// Note: /api/task-categories handled individually below
-app.use('/api/employees', verifyToken, requireMfaSetup);
-// Note: /api/policies and /api/init-policies are handled individually above
+
 
 // Import notification service
 import notificationService from './services/notificationService.js';
@@ -2408,6 +2343,22 @@ app.get('/api/assignments/:userId', verifyToken, async (req, res) => {
     const { userId } = req.params;
     console.log('Fetching assignments for user:', userId);
     
+    if (!userId) {
+      return res.status(400).json({ message: 'User ID is required' });
+    }
+    
+    // Check if user_assignments table exists
+    try {
+      const [tableCheck] = await db.execute("SHOW TABLES LIKE 'user_assignments'");
+      if (!tableCheck || tableCheck.length === 0) {
+        console.log('user_assignments table does not exist');
+        return res.json([]);
+      }
+    } catch (tableError) {
+      console.log('Error checking table existence:', tableError.message);
+      return res.json([]);
+    }
+    
     // Get all assignments for user with proper joins
     const [assignments] = await db.execute(`
       SELECT ua.id, ua.user_id, ua.item_type, ua.item_id, ua.assigned_by, ua.assigned_date, 
@@ -2433,11 +2384,15 @@ app.get('/api/assignments/:userId', verifyToken, async (req, res) => {
       ORDER BY ua.assigned_date DESC
     `, [userId]);
     
-    console.log('Found assignments:', assignments.length, assignments);
-    res.json(assignments);
+    console.log('Found assignments:', assignments ? assignments.length : 0);
+    
+    // Ensure we always return an array
+    const safeAssignments = Array.isArray(assignments) ? assignments : [];
+    res.json(safeAssignments);
   } catch (error) {
     console.error('Error fetching assignments:', error);
-    res.status(500).json({ message: 'Server error' });
+    console.log('assignments table not available:', error.message);
+    res.json([]); // Return empty array on error
   }
 });
 
@@ -2577,23 +2532,7 @@ app.delete('/api/task-categories/:id', verifyToken, requireRole(['Admin', 'HR'])
   }
 });
 
-// Cleanup expired MFA sessions periodically
-const cleanupExpiredSessions = async () => {
-  try {
-    const [result] = await db.execute('DELETE FROM mfa_sessions WHERE expires_at < NOW()');
-    if (result.affectedRows > 0) {
-      console.log(`🧹 Cleaned up ${result.affectedRows} expired MFA sessions`);
-    }
-  } catch (error) {
-    if (error.code !== 'ECONNREFUSED') {
-      console.error('Error cleaning up expired sessions:', error.message);
-    }
-  }
-};
 
-// Run cleanup based on environment variable
-const cleanupInterval = (parseInt(process.env.MFA_CLEANUP_INTERVAL_HOURS) || 1) * 60 * 60 * 1000;
-setInterval(cleanupExpiredSessions, cleanupInterval);
 
 // Import and setup bulk upload functionality
 import BulkUploadController from './controllers/bulkUploadController.js';
@@ -2642,10 +2581,6 @@ app.use(globalErrorHandler);
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server is running on http://0.0.0.0:${PORT}`);
-  console.log('🔐 MFA system initialized with enhanced security');
-  
-  // Run initial cleanup after delay to allow database connection
-  setTimeout(cleanupExpiredSessions, 30000);
   
   // Start reminder scheduler
   reminderService.startScheduler();

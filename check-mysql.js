@@ -20,11 +20,12 @@ async function checkMySQL() {
     console.log('✅ MySQL server connection successful');
     
     // Check if database exists
-    const [databases] = await connection.execute('SHOW DATABASES LIKE ?', [process.env.DB_DATABASE || 'onboarding_db']);
+    const dbName = process.env.DB_DATABASE || 'onboarding_db';
+    const [databases] = await connection.execute(`SHOW DATABASES LIKE '${dbName}'`);
     
     if (databases.length === 0) {
       console.log('❌ Database does not exist. Creating...');
-      await connection.execute('CREATE DATABASE ??', [process.env.DB_DATABASE || 'onboarding_db']);
+      await connection.execute(`CREATE DATABASE \`${dbName}\``);
       console.log('✅ Database created');
     } else {
       console.log('✅ Database exists');

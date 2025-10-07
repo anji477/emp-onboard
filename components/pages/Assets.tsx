@@ -279,10 +279,15 @@ const Assets: React.FC = () => {
         if (!editingAsset) return;
         
         try {
+            // Get CSRF token
+            const csrfResponse = await fetch('/api/csrf-token');
+            const { csrfToken } = await csrfResponse.json();
+            
             const response = await fetch(`/api/assets/${editingAsset.id}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken
                 },
                 credentials: 'include',
                 body: JSON.stringify({
@@ -313,8 +318,15 @@ const Assets: React.FC = () => {
         if (!confirm('Are you sure you want to delete this asset?')) return;
         
         try {
+            // Get CSRF token
+            const csrfResponse = await fetch('/api/csrf-token');
+            const { csrfToken } = await csrfResponse.json();
+            
             const response = await fetch(`/api/assets/${assetId}`, {
                 method: 'DELETE',
+                headers: {
+                    'X-CSRF-Token': csrfToken
+                },
                 credentials: 'include'
             });
             
@@ -334,10 +346,15 @@ const Assets: React.FC = () => {
     
     const handleAddAsset = async () => {
         try {
+            // Get CSRF token
+            const csrfResponse = await fetch('/api/csrf-token');
+            const { csrfToken } = await csrfResponse.json();
+            
             const response = await fetch('/api/assets', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken
                 },
                 credentials: 'include',
                 body: JSON.stringify({

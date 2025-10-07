@@ -81,6 +81,10 @@ const Policies: React.FC = () => {
         try {
             let response;
             
+            // Get CSRF token
+            const csrfResponse = await fetch('/api/csrf-token');
+            const { csrfToken } = await csrfResponse.json();
+            
             if (uploadType === 'file' && selectedFile) {
                 const formDataUpload = new FormData();
                 formDataUpload.append('policyFile', selectedFile);
@@ -93,13 +97,19 @@ const Policies: React.FC = () => {
                 
                 response = await fetch('/api/policies/upload', {
                     method: 'POST',
+                    headers: {
+                        'X-CSRF-Token': csrfToken
+                    },
                     credentials: 'include',
                     body: formDataUpload
                 });
             } else {
                 response = await fetch('/api/policies', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': csrfToken
+                    },
                     credentials: 'include',
                     body: JSON.stringify(formData)
                 });
@@ -129,9 +139,16 @@ const Policies: React.FC = () => {
         if (!editingPolicy) return;
         
         try {
+            // Get CSRF token
+            const csrfResponse = await fetch('/api/csrf-token');
+            const { csrfToken } = await csrfResponse.json();
+            
             const response = await fetch(`/api/policies/${editingPolicy.id}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken
+                },
                 credentials: 'include',
                 body: JSON.stringify(formData)
             });
@@ -156,8 +173,15 @@ const Policies: React.FC = () => {
     
     const handleDeletePolicy = async (policyId: number) => {
         try {
+            // Get CSRF token
+            const csrfResponse = await fetch('/api/csrf-token');
+            const { csrfToken } = await csrfResponse.json();
+            
             const response = await fetch(`/api/policies/${policyId}`, {
                 method: 'DELETE',
+                headers: {
+                    'X-CSRF-Token': csrfToken
+                },
                 credentials: 'include'
             });
             

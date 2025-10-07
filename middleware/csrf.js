@@ -15,6 +15,7 @@ export const verifyCsrfToken = (req, res, next) => {
       req.path.startsWith('/api/chat/') ||
       req.path === '/api/users/invite' ||
       req.path === '/api/documents/upload' ||
+      req.path.startsWith('/api/employees/') ||
       req.path.startsWith('/api/documents/') && req.method === 'POST' && req.headers['content-type']?.includes('multipart/form-data')) {
     return next();
   }
@@ -25,8 +26,13 @@ export const verifyCsrfToken = (req, res, next) => {
     return res.status(403).json({ message: 'CSRF token missing' });
   }
   
+  // Check if session exists
+  if (!req.session) {
+    return res.status(403).json({ message: 'No session found' });
+  }
+  
   // Get CSRF token from session
-  const sessionToken = req.session?.data?.csrfToken;
+  const sessionToken = req.session.data?.csrfToken;
   
   if (!sessionToken) {
     return res.status(403).json({ message: 'No CSRF token in session' });

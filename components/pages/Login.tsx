@@ -5,8 +5,7 @@ import { UserRole } from '../../types';
 import Button from '../common/Button';
 import Icon from '../common/Icon';
 import Loader from '../common/Loader';
-import MfaVerification from './MfaVerification';
-import MfaSetup from './MfaSetup';
+
 
 interface CompanySettings {
     name: string;
@@ -26,12 +25,7 @@ const Login: React.FC = () => {
     const [rememberMe, setRememberMe] = useState(false);
     const [companySettings, setCompanySettings] = useState<CompanySettings>({ name: 'Onboardly', logo: '', primaryColor: '#6366f1' });
     
-    // MFA state
-    const [showMfaVerification, setShowMfaVerification] = useState(false);
-    const [showMfaSetup, setShowMfaSetup] = useState(false);
-    const [mfaSessionToken, setMfaSessionToken] = useState('');
-    const [userEmail, setUserEmail] = useState('');
-    const [userName, setUserName] = useState('');
+
 
     
     useEffect(() => {
@@ -68,22 +62,9 @@ const Login: React.FC = () => {
             console.log('Login response:', { status: response.status, data });
             
             if (response.ok) {
-                if (data.requiresMfaSetup) {
-                    console.log('MFA setup required');
-                    setMfaSessionToken(data.sessionToken);
-                    setUserEmail(data.userEmail);
-                    setUserName(data.userName);
-                    setShowMfaSetup(true);
-                } else if (data.requiresMfa) {
-                    console.log('MFA verification required');
-                    setMfaSessionToken(data.sessionToken);
-                    setUserEmail(data.userEmail);
-                    setShowMfaVerification(true);
-                } else {
-                    console.log('Login successful, user data:', data.user);
-                    // Force page reload to update context
-                    window.location.reload();
-                }
+                console.log('Login successful, user data:', data.user);
+                // Force page reload to update context
+                window.location.reload();
             } else {
                 console.log('Login failed:', data.message);
                 setError(data.message || 'Login failed');
@@ -98,35 +79,7 @@ const Login: React.FC = () => {
     
 
 
-    const handleMfaSuccess = (userData: any) => {
-        console.log('MFA verification successful:', userData);
-        // Force page reload to update context
-        window.location.reload();
-    };
 
-    // Show MFA setup if required
-    if (showMfaSetup) {
-        return (
-            <MfaSetup
-                sessionToken={mfaSessionToken}
-                userEmail={userEmail}
-                userName={userName}
-                onSuccess={handleMfaSuccess}
-                isRequired={true}
-            />
-        );
-    }
-
-    // Show MFA verification if required
-    if (showMfaVerification) {
-        return (
-            <MfaVerification
-                sessionToken={mfaSessionToken}
-                userEmail={userEmail}
-                onSuccess={handleMfaSuccess}
-            />
-        );
-    }
 
     return (
         <div className="flex items-center justify-center min-h-screen bg-gray-100">

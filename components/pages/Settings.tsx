@@ -38,14 +38,7 @@ interface SettingsData {
     requireSymbols: boolean;
     expiryDays: number;
   };
-  mfa_policy: {
-    enforced: boolean;
-    allow_email_otp: boolean;
-    allow_authenticator: boolean;
-    require_for_roles: string[];
-    grace_period_days: number;
-    remember_device_days: number;
-  };
+
   notification_preferences: {
     email: {
       enabled: boolean;
@@ -142,7 +135,7 @@ const Settings: React.FC = () => {
           company_info: data.company_info?.value || { name: '', description: '', industry: '', size: '', website: '', phone: '', address: '', logo: '', favicon: '', primaryColor: '#6366f1', secondaryColor: '#f3f4f6', accentColor: '#10b981', backgroundColor: '#ffffff', textColor: '#1f2937', darkMode: false },
           working_hours: data.working_hours?.value || { startTime: '09:00', endTime: '17:00', timezone: 'UTC', workingDays: [] },
           password_policy: data.password_policy?.value || { minLength: 8, requireUppercase: true, requireNumbers: true, requireSymbols: true, expiryDays: 90 },
-          mfa_policy: data.mfa_policy?.value || { enforced: false, allow_email_otp: true, allow_authenticator: true, require_for_roles: ['Admin'], grace_period_days: 7, remember_device_days: 30 },
+
           notification_preferences: data.notification_preferences?.value || { email: { enabled: true, onboarding: true, taskReminders: true }, sms: { enabled: false } },
           backup_settings: data.backup_settings?.value || { autoBackup: true, frequency: 'daily', retentionDays: 30, location: 'cloud', encryption: true },
           maintenance_mode: data.maintenance_mode?.value || { enabled: false, message: 'System under maintenance', allowedRoles: ['Admin'] },
@@ -168,9 +161,16 @@ const Settings: React.FC = () => {
     
     setSaving(true);
     try {
+      // Get CSRF token
+      const csrfResponse = await fetch('/api/csrf-token', { credentials: 'include' });
+      const csrfData = await csrfResponse.json();
+      
       const response = await fetch('/api/settings', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfData.csrfToken
+        },
         credentials: 'include',
         body: JSON.stringify({ settings })
       });
@@ -206,17 +206,7 @@ const Settings: React.FC = () => {
     }
   };
   
-  const updateMfaPolicy = (field: string, value: any) => {
-    if (!settings) return;
-    
-    setSettings(prev => ({
-      ...prev!,
-      mfa_policy: {
-        ...prev!.mfa_policy,
-        [field]: value
-      }
-    }));
-  };
+
 
   const tabs = [
     { id: 'company', label: 'Company', icon: 'building-office' },
@@ -579,123 +569,7 @@ const Settings: React.FC = () => {
                 </label>
               </div>
             </div>
-            
-            {/* MFA Policy Settings */}
-            <div className="mt-6">
-              <h3 className="text-lg font-medium mb-3 text-gray-800 dark:text-gray-200">Multi-Factor Authentication</h3>
-              
-              <div className="space-y-4">
-                {/* MFA Enforcement */}
-                <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                  <div>
-                    <h4 className="text-md font-medium text-gray-900 dark:text-white">Enforce MFA</h4>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Require all users to set up multi-factor authentication</p>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={settings.mfa_policy.enforced}
-                      onChange={(e) => updateMfaPolicy('enforced', e.target.checked)}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
-                  </label>
-                </div>
 
-                {/* MFA Methods */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="p-4 border border-gray-200 dark:border-gray-600 rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      <div className="h-10 w-10 bg-green-100 rounded-lg flex items-center justify-center">
-                        <Icon name="device-phone-mobile" className="h-6 w-6 text-green-600" />
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="font-medium text-gray-900 dark:text-white">Authenticator Apps</h4>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Google, Microsoft, Authy</p>
-                      </div>
-                      <input
-                        type="checkbox"
-                        checked={settings.mfa_policy.allow_authenticator}
-                        onChange={(e) => updateMfaPolicy('allow_authenticator', e.target.checked)}
-                        className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="p-4 border border-gray-200 dark:border-gray-600 rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      <div className="h-10 w-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                        <Icon name="envelope" className="h-6 w-6 text-blue-600" />
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="font-medium text-gray-900 dark:text-white">Email OTP</h4>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Backup verification method</p>
-                      </div>
-                      <input
-                        type="checkbox"
-                        checked={settings.mfa_policy.allow_email_otp}
-                        onChange={(e) => updateMfaPolicy('allow_email_otp', e.target.checked)}
-                        className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Role-based MFA */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Require MFA for Roles</label>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                    {['Admin', 'HR', 'Manager', 'Employee'].map(role => (
-                      <label key={role} className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={settings.mfa_policy.require_for_roles.includes(role)}
-                          onChange={(e) => {
-                            const roles = settings.mfa_policy.require_for_roles;
-                            if (e.target.checked) {
-                              updateMfaPolicy('require_for_roles', [...roles, role]);
-                            } else {
-                              updateMfaPolicy('require_for_roles', roles.filter(r => r !== role));
-                            }
-                          }}
-                          className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                        />
-                        <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">{role}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Grace Period */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Setup Grace Period (days)</label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="30"
-                      value={settings.mfa_policy.grace_period_days}
-                      onChange={(e) => updateMfaPolicy('grace_period_days', parseInt(e.target.value))}
-                      className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200"
-                    />
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Days users have to set up MFA after enforcement</p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Remember Device (days)</label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="90"
-                      value={settings.mfa_policy.remember_device_days}
-                      onChange={(e) => updateMfaPolicy('remember_device_days', parseInt(e.target.value))}
-                      className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200"
-                    />
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">How long to remember trusted devices</p>
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
         </Card>
       )}
