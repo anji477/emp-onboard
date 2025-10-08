@@ -25,18 +25,23 @@ export const sessionMiddleware = async (req, res, next) => {
     loggedOut: false,
     
     async save() {
-      if (this.isNew) {
-        this.id = await sessionStore.create(this.userId, this.data);
-        this.isNew = false;
-        
-        res.cookie('sessionId', this.id, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'strict',
-          maxAge: 24 * 60 * 60 * 1000
-        });
-      } else if (this.id) {
-        await sessionStore.update(this.id, this.data);
+      try {
+        if (this.isNew) {
+          this.id = await sessionStore.create(this.userId, this.data);
+          this.isNew = false;
+          
+          res.cookie('sessionId', this.id, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict',
+            maxAge: 24 * 60 * 60 * 1000
+          });
+        } else if (this.id) {
+          await sessionStore.update(this.id, this.data);
+        }
+      } catch (error) {
+        console.error('Session save error:', error);
+        throw error;
       }
     },
     
@@ -74,14 +79,19 @@ export const sessionMiddleware = async (req, res, next) => {
   
   // Load existing session only if sessionId exists and is valid
   if (sessionId) {
-    const session = await sessionStore.get(sessionId);
-    if (session) {
-      req.session.id = session.id;
-      req.session.userId = session.userId;
-      req.session.data = session.data;
-      req.session.isNew = false;
-    } else {
-      // Session ID exists but no valid session - user logged out
+    try {
+      const session = await sessionStore.get(sessionId);
+      if (session) {
+        req.session.id = session.id;
+        req.session.userId = session.userId;
+        req.session.data = session.data;
+        req.session.isNew = false;
+      } else {
+        // Session ID exists but no valid session - user logged out
+        req.session.loggedOut = true;
+      }
+    } catch (error) {
+      console.error('Session load error:', error);
       req.session.loggedOut = true;
     }
   }

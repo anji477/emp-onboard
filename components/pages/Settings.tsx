@@ -113,7 +113,9 @@ const Settings: React.FC = () => {
 
   // Apply favicon when settings change
   useEffect(() => {
-    if (settings?.company_info?.favicon) {
+    if (settings?.company_info?.favicon && 
+        settings.company_info.favicon.startsWith('data:image/') && 
+        /^data:image\/(png|jpeg|jpg|x-icon|svg\+xml);base64,[A-Za-z0-9+/=]+$/.test(settings.company_info.favicon)) {
       const link = document.querySelector("link[rel*='icon']") as HTMLLinkElement || document.createElement('link');
       link.type = 'image/x-icon';
       link.rel = 'shortcut icon';
@@ -393,7 +395,13 @@ const Settings: React.FC = () => {
                   if (file) {
                     const reader = new FileReader();
                     reader.onload = (event) => {
-                      updateSetting('company_info', 'logo', event.target?.result as string);
+                      const logoData = event.target?.result as string;
+                      if (logoData && 
+                          logoData.startsWith('data:image/') && 
+                          /^data:image\/(png|jpeg|jpg|svg\+xml);base64,[A-Za-z0-9+/=]+$/.test(logoData) &&
+                          logoData.length < 5242880) { // 5MB limit
+                        updateSetting('company_info', 'logo', logoData);
+                      }
                     };
                     reader.readAsDataURL(file);
                   }
@@ -417,14 +425,18 @@ const Settings: React.FC = () => {
                     const reader = new FileReader();
                     reader.onload = (event) => {
                       const faviconData = event.target?.result as string;
-                      // Validate data URL format to prevent XSS
-                      if (faviconData && faviconData.startsWith('data:image/') && /^data:image\/(png|jpeg|jpg|x-icon|svg\+xml);base64,/.test(faviconData)) {
-                        updateSetting('company_info', 'favicon', faviconData);
+                      // Validate and sanitize data URL format to prevent XSS
+                      if (faviconData && 
+                          faviconData.startsWith('data:image/') && 
+                          /^data:image\/(png|jpeg|jpg|x-icon|svg\+xml);base64,[A-Za-z0-9+/=]+$/.test(faviconData) &&
+                          faviconData.length < 2097152) { // 2MB limit
+                        const sanitizedData = faviconData.replace(/[^\w\s:;,/+=.-]/g, '');
+                        updateSetting('company_info', 'favicon', sanitizedData);
                         // Update favicon in browser with sanitized data
                         const link = document.querySelector("link[rel*='icon']") as HTMLLinkElement || document.createElement('link');
                         link.type = 'image/x-icon';
                         link.rel = 'shortcut icon';
-                        link.href = faviconData;
+                        link.href = sanitizedData;
                         document.getElementsByTagName('head')[0].appendChild(link);
                       }
                     };

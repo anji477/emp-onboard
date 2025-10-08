@@ -9,6 +9,11 @@ const router = express.Router();
 
 // Get or create conversation
 router.post('/conversation', verifyToken, async (req, res) => {
+  // CSRF protection
+  const csrfToken = req.headers['x-csrf-token'];
+  if (!csrfToken) {
+    return res.status(403).json({ error: 'CSRF token required' });
+  }
   try {
     const { channelType = 'ai' } = req.body;
     const userId = req.user.id;

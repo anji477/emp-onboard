@@ -92,7 +92,7 @@ const Team: React.FC = () => {
             const newRoles = prev.roles.includes(role)
                 ? prev.roles.filter(r => r !== role)
                 : [...prev.roles, role];
-            console.log('New roles:', newRoles);
+            console.log('New roles:', JSON.stringify(newRoles).replace(/[\r\n\t]/g, ' ').substring(0, 100));
             return {
                 ...prev,
                 roles: newRoles

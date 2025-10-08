@@ -55,7 +55,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
       document.documentElement.classList.remove('dark');
       console.log('Removed dark class from document');
     }
-    console.log('Current document classes:', document.documentElement.className);
+    console.log('Current document classes:', String(document.documentElement.className).replace(/[\r\n\t]/g, ' ').substring(0, 100));
   };
 
   const setDarkMode = (enabled: boolean) => {
